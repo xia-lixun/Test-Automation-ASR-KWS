@@ -22,7 +22,7 @@ function file_io_dut_sdb(fn)
         system('start_record_specific_time_with_playback.bat');
         
     else
-        error('unsupported IO operation!');
+        error('unsupported file IO operation!');
     end
     
     % add keep-alive mechanism?
