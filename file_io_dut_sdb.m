@@ -9,15 +9,15 @@
 %
 function file_io_dut_sdb(fn)
 
-    if strcmp(fn, 'record')
+    if strcmp(fn, 'record_blocking')
         system('setup.bat');
         system('start_record_specific_time.bat'); % Note! change the time within the .sh file
         
-    elseif strcmp(fn, 'play')
+    elseif strcmp(fn, 'play_nonblocking')
         system('setup.bat');
         system('start_play.bat');
     
-    elseif strcmp(fn, 'play+record')
+    elseif strcmp(fn, 'play+record_blocking')
         system('setup.bat');
         system('start_record_specific_time_with_playback.bat');
         

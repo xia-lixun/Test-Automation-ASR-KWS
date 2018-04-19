@@ -1,7 +1,8 @@
-function [y,lbs] = locate_sync_symbol(x, s, repeat)
+function [lbs,peaks] = locate_sync_symbol(x, s, repeat)
     % x, s must be colume vector 
     x = x + rand(size(x)) * 10^(-100/20);
     
+    ploc_cache = zeros(repeat,1);
     peaks = zeros(repeat,1);
     lbs = zeros(repeat,1);
     
@@ -12,10 +13,10 @@ function [y,lbs] = locate_sync_symbol(x, s, repeat)
     n = length(x);
     y = zeros(m * repeat, 1);
 
-    R = abs(xcorr(s, x));
-    figure; plot(R);
+    R = xcorr(s, x);
+    figure; plot(R); grid on;
     Rs = sort(R(local_maxima(R)), 'descend');
-    figure; plot(Rs);
+    %figure; plot(Rs);
     if isempty(Rs) 
         return
     end
@@ -26,17 +27,23 @@ function [y,lbs] = locate_sync_symbol(x, s, repeat)
     lb = n - ploc + 1;
     rb = min(lb + m - 1, length(x));
     y(1:1+rb-lb) = x(lb:rb);
-    lbs(1) = lb;
-    peaks(1) = ploc;
     ip = 1;
+    ploc_cache(ip) = ploc;
+    
+    lbs(ip) = lb;
+    [pf2a, pf2b] = parabolic_fit_2([R(ploc-1) R(ploc) R(ploc+1)]);  
+    peaks(ip) = (ploc-1) + (-0.5*pf2b/pf2a);
+    
     
     if repeat > 1
         for i = 2:length(Rs)
             ploc = find(R==Rs(2));
             ploc = ploc(1);
-            if sum(abs(peaks(1:ip) - ploc) > m) == ip
+            if sum(abs(ploc_cache(1:ip) - ploc) > m) == ip
                 ip = ip + 1;
-                peaks(ip) = ploc;
+                ploc_cache(ip) = ploc;
+                [pf2a, pf2b] = parabolic_fit_2([R(ploc-1) R(ploc) R(ploc+1)]);  
+                peaks(ip) = (ploc-1) + (-0.5*pf2b/pf2a);
                 lb = n - ploc + 1;
                 rb = min(lb + m - 1, length(x));
                 y(1+(ip-1)*m : ip*m) = x(lb:rb);

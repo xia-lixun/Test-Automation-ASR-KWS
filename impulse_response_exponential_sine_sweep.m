@@ -69,10 +69,13 @@ stimulus = zeros(m + n, n_spk);
 stimulus(1:m, spk_active) = ess * 10^(-3/20);
 
 
-%@ do the electric-acoustic tasks
+%@ these are the actual files for devices (asio, fileio etc...)
 playback = 'ess-stimulus-minus-3db.wav';
 capture = 'response.wav';
 
+
+
+%@ do the electric-acoustic tasks
 if strcmp(device, 'asio')
     
     % play and record with asio sound card
@@ -80,53 +83,15 @@ if strcmp(device, 'asio')
     system(['PaDynamic.exe --play ',playback,' --record ',capture,' --rate ',num2str(FS),' --channels ', num2str(n_mic) ,' --bits 32'])
     [mics, fs_] = audioread(capture);
     assert(fs_ == FS);
-    
-elseif strcmp(device, 'fileio')
-    
-    % play and record on DUT
-    g = sync_symbol(800, 1200, 1, FS) * (10^(-3/20));
-    context_switch = 3;
-    symbol_decay = 3;
-    stimulus_async = add_sync_symbol(stimulus, context_switch, g, symbol_decay, FS);
-    audiowrite(playback, stimulus_async, FS, 'BitsPerSample', 32);
-    
-    file_io_dut_sdb('play+record');
-    
-    [mics, fs_] = audioread(capture);
-    assert(fs_ == FS);
-    
-    % extract the response
-    symbol_locs = zeros(2,n_mic);
-    for channel = 1:n_mic
-        symbol_locs(:,channel) = locate_sync_symbol(mics(:,channel), g, 2);
-    end
-    delta = symbol_locs(2,:) - symbol_locs(1,:);
-    for channel = 1:n_mic
-        assert(delta(channel) == length(g) + round(symbol_decay*FS) + size(stimulus,1));
-        disp('recordings sanity check ok');
-    end
-    relative_latency = symbol_locs(1,:) - min(symbol_locs(1,:));
-    disp('relative latency of each mic channels (sample):');
-    disp(relative_latency);
-    
-    mics_extracted = zeros(size(stimulus,1),n_mic);
-    for channel = 1:n_mic
-        loc = symbol_locs(1,channel) + length(g) + round(symbol_decay*FS) - 2048;
-        mics_extracted(:,channel) = mics(loc : loc+size(stimulus,1)-1,channel);
-    end
-    mics = mics_extracted;
-    
-    
-elseif strcmp(device, 'asio_fileio')
-    % play ess with asio souncard, do mic capture with fileio on DUT
 
-elseif strcmp(device, 'fileio_asio')
-    % play ess with fileio on DUT, do mic capture with asio sound card
-    
+
 elseif strcmp(device, 'simulation')
+    
     %only do simulation
     n_mic = 1; %force response to be mono
     distortion = true;
+    
+    audiowrite(playback, stimulus, FS, 'BitsPerSample', 32);
     [b,a] = ellip(5,0.5,20,0.4);
     freqz(b,a);
     y = filter(b,a,stimulus(:,spk_active));
@@ -135,13 +100,88 @@ elseif strcmp(device, 'simulation')
         y(y>ym) = ym;
     end
     audiowrite(capture, y, FS, 'BitsPerSample', 32);
-    
     [mics, fs_] = audioread(capture);
     assert(fs_ == FS);
+    
 
 else
-    error('wrong device type! [asio, fileio, asio_fileio, fileio_asio]')
+    %@ Asynchronous operations -- mixture of ASIO/FileIO
+    g = sync_symbol(800, 1200, 1, FS) * (10^(-3/20));
+    context_switch = 3;
+    symbol_decay = 3;
+    stimulus_async = add_sync_symbol(stimulus, context_switch, g, symbol_decay, FS);
+    
+    
+    %@ energy conversions happen here
+    if strcmp(device, 'fileio')
+        % play and record on DUT
+        
+        audiowrite(playback, stimulus_async, FS, 'BitsPerSample', 32);
+        %file_io_dut_sdb('play+record_blocking');
+        system(['PaDynamic.exe --play ',playback,' --record ',capture,' --rate ',num2str(FS),' --channels ', num2str(n_mic), ' --bits 32'])
+        [mics, fs_] = audioread(capture);
+        assert(fs_ == FS);
+        
+    elseif strcmp(device, 'asio_fileio')
+        % play ess with asio souncard, do mic capture with fileio on DUT
+        
+        audiowrite(playback, stimulus_async, FS, 'BitsPerSample', 32);
+        system(['PaDynamic.exe --play ',playback,' --rate ',num2str(FS), ' &'])
+        file_io_dut_sdb('record_blocking');
+        [mics, fs_] = audioread(capture);
+        assert(fs_ == FS);
+        % timing diagram
+        % play:     +~~lat(PaDynamic)~~+---------stimulus_async---------+
+        % record:   +~~~~~lat(file_io_dut)~~~~~+------len(stimulus_async)--------+
+        
+    elseif strcmp(device, 'fileio_asio')
+        % play ess with fileio on DUT, do mic capture with asio sound card
+        file_io_dut_latency = 10;
+        time_recording = size(stimulus_async,1)/FS + file_io_dut_latency;
+        
+        audiowrite(playback, stimulus_async, FS, 'BitsPerSample', 32);
+        file_io_dut_sdb('play_nonblocking');
+        system(['PaDynamic.exe --record ',capture,' --rate ',num2str(FS),' --channels ', num2str(n_mic), ' --duration ', num2str(time_recording), ' --bits 32'])
+        [mics, fs_] = audioread(capture);
+        assert(fs_ == FS);
+        % timing diagram
+        % play:     +~~~~~~lat(file_io_dut)~~~~~~~~+---------stimulus_async---------+
+        % record:   +~~lat(PaDynamic)~~+------len(stimulus_async)--------+----lat(file_io_dut)----+
+        
+    else
+        error('wrong device type! [asio, fileio, asio_fileio, fileio_asio]')
+    end
+    
+    
+    %@ extract the response
+    symbol_locs = zeros(2,n_mic);
+    for channel = 1:n_mic
+        [left_bounds, corr_peaks]= locate_sync_symbol(mics(:,channel), g, 2);
+        symbol_locs(:,channel) = left_bounds;
+    end
+    disp('sync symbol locations for each channel (columns):')
+    disp(symbol_locs);
+    delta = symbol_locs(2,:) - symbol_locs(1,:);
+    for channel = 1:n_mic
+        assert(delta(channel) == length(g) + round(symbol_decay*FS) + size(stimulus,1));
+        disp('recordings sanity check ok, samples = ');
+        disp([delta(channel); corr_peaks(2) - corr_peaks(1)]);
+    end
+    relative_latency = symbol_locs(1,:) - min(symbol_locs(1,:));
+    disp('relative latency of each mic channels (sample):');
+    disp(relative_latency);
+    
+    mics_extracted = zeros(size(stimulus,1),n_mic);
+    hyperthetical_delay = 2048;
+    for channel = 1:n_mic
+        loc = symbol_locs(1,channel) + length(g) + round(symbol_decay*FS) - hyperthetical_delay;
+        mics_extracted(:,channel) = mics(loc : loc+size(stimulus,1)-1,channel);
+    end
+    mics = mics_extracted;
+    
 end
+
+
 
 
 
