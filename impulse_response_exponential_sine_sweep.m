@@ -10,7 +10,7 @@
 %
 % Dependency: sound-card tool for play and recording if device = 'asio'
 %
-function [fundamental, harmonic_2nd, response_t] = impulse_response_exponential_sine_sweep(spk_active, n_spk, n_mic, f0, f1, time_ess, time_decay, save_raw, device)
+function [fundamental, harmonic, response_t] = impulse_response_exponential_sine_sweep(spk_active, n_spk, n_mic, f0, f1, time_ess, time_decay, save_raw, device)
 %   spk_active: loud speaker numer that plays the stimulus
 %   n_spk:      number of total loud speakers
 %   n_mic:      number of total mics
@@ -107,7 +107,7 @@ elseif strcmp(device, 'simulation')
 else
     %@ Asynchronous operations -- mixture of ASIO/FileIO
     g = sync_symbol(800, 1200, 1, FS) * (10^(-3/20));
-    context_switch = 3;
+    context_switch = 5;
     symbol_decay = 3;
     stimulus_async = add_sync_symbol(stimulus, context_switch, g, symbol_decay, FS);
     
@@ -117,6 +117,7 @@ else
         % play and record on DUT
         
         audiowrite(playback, stimulus_async, FS, 'BitsPerSample', 32);
+        %file_io_dut_sdb('setup');
         %file_io_dut_sdb('play+record_blocking');
         system(['PaDynamic.exe --play ',playback,' --record ',capture,' --rate ',num2str(FS),' --channels ', num2str(n_mic), ' --bits 32'])
         [mics, fs_] = audioread(capture);
@@ -206,9 +207,10 @@ distance_12 = round(log(2) * distance_offset * FS);
 fundamental = zeros(nfft - (m-round(distance_12/3)-1), n_mic);
 response_t = zeros(nfft, n_mic);
 
-distance_13 = round(log(3) * distance_offset * FS);
-distance_23 = distance_13 - distance_12;
-harmonic_2nd = zeros(m-round(distance_12/3) - (m - distance_12 - round(distance_23/3)) + 1, n_mic);
+%distance_13 = round(log(3) * distance_offset * FS);
+%distance_23 = distance_13 - distance_12;
+%harmonic_2nd = zeros(m-round(distance_12/3) - (m - distance_12 - round(distance_23/3)) + 1, n_mic);
+harmonic = zeros(m-round(distance_12/3), n_mic);
 
 for channel = 1:n_mic
     
@@ -220,7 +222,9 @@ for channel = 1:n_mic
     
     response_t(:,channel) = response;
     fundamental(:,channel) = response(m-round(distance_12/3):end);
-    harmonic_2nd(:,channel) = response(m - distance_12 - round(distance_23/3) : m-round(distance_12/3));
+    
+    %harmonic_2nd(:,channel) = response(m - distance_12 - round(distance_23/3) : m-round(distance_12/3));
+    harmonic(:,channel) = response(1:m-round(distance_12/3));
 end
 
 
