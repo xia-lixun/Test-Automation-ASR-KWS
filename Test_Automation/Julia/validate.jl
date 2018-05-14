@@ -15,21 +15,25 @@ function validate_soundcard_api()
 end
 
 
-function impulse_response_asio()
+function validate_impulse_response_asio()
     fs = 48000
     f0 = 22
     f1 = 12000
     tess = 3.0
     ndecay = 1fs
+    sndcard_n_out = 8
+    sndcard_n_in = 8
+    mic_n = 1
 
     ess = LibAudio.expsinesweep(f0, f1, tess, fs) .* 10^(-3/20)
     m = length(ess)
-    sti = zeros(Float32, m+ndecay)
-    sti[1:m] = convert.(Float32,ess)
-    rsp = SoundcardAPI.play_record(SoundcardAPI.mixer(sti,[0.0f0 1.0f0]), 2, fs)
+    sti = zeros(Float32, m+ndecay, 1)
+    sti[1:m,:] = Float32.(ess)
 
-    info("ok here 1")
-    rsp = SoundcardAPI.mixer(rsp, transpose([0.0f0 1.0f0]))
-    info("ok here 2")
-    fund, harm, total = LibAudio.impresp(ess, ndecay, f0, f1, fs, convert.(Float64,rsp))
+    mixplay = zeros(Float32, size(sti,2), sndcard_n_out)
+    mixplay[1,2] = 1.0f0
+    mixrec = zeros(Float32, sndcard_n_in, mic_n)
+    mixrec[2,1] = 1.0f0
+    rsp = SoundcardAPI.mixer(SoundcardAPI.play_record(SoundcardAPI.mixer(sti, mixplay), sndcard_n_in, fs), mixrec)
+    fund, harm, dirac = LibAudio.impresp(ess, ndecay, f0, f1, fs, Float64.(rsp))
 end

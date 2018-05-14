@@ -664,13 +664,12 @@ function accusum(x, sigma, err)
 end
 
 
-function expsinesweep(f_start, f_stop, time, fs)
-    
-    const sps = convert(Int64, round(time * fs))
+function expsinesweep(f_start, f_stop, time, fs)    # -> Matrix{Float64}
 
+    const sps = convert(Int64, round(time * fs))
     mul = (f_stop / f_start) ^ (1 / sps)
     delta = 2pi * f_start / fs
-    play = zeros(Float64, sps)
+    play = zeros(sps,1)
 
     #calculate the phase increment gain
     #closed form --- [i.play[pauseSps] .. i.play[pauseSps + chirpSps - 1]]
@@ -693,11 +692,11 @@ function expsinesweep(f_start, f_stop, time, fs)
 		play[k] = sin(play[k] + phi);
 	    phi,accuerr = accusum(delta, phi, accuerr);
     end
-    play
+    return play
 end
 
 
-function iexpsinesweep(ess, f_start, f_stop)
+function iexpsinesweep(ess::Matrix{Float64}, f_start, f_stop)    # -> Matrix{Float64}
 
     n = length(ess)
     slope = 20log10(0.5)
@@ -708,18 +707,17 @@ function iexpsinesweep(ess, f_start, f_stop)
         iess[i] *= 10^(gain/20+1)
         gain += atten
     end
-    iess
+    return iess
 end
 
 
 
 
-function impresp(ess::Array{Float64,1}, ndecay, f_start, f_stop, fs, mics)
+function impresp(ess::Matrix{Float64}, ndecay::Int64, f_start, f_stop, fs, mics::Matrix{Float64})    # -> (Matrix{Float64}, Matrix{Float64}, Matrix{Float64})
 
     iess = iexpsinesweep(ess, f_start, f_stop)
     m = length(ess)
-    n = ndecay
-    period = m+n
+    period = m+ndecay
     l,nmic = size(mics)
     assert(l == period)
 
@@ -728,25 +726,18 @@ function impresp(ess::Array{Float64,1}, ndecay, f_start, f_stop, fs, mics)
 
     nfft = nextpow2(m+period-1)
     iessfft = ffn(iess, nfft)
+    dirac = real(iffn(ffn(ess, nfft) .* iessfft, nfft))/nfft
+    measure = real(iffn(ffn(mics, nfft) .* iessfft, nfft))/nfft
+
 
     disoff = (m/fs) / log(f_stop/f_start)
-    dist12 = convert(Int64, round(log(2) * disoff * fs))
-    fundamental = zeros(nfft-(m-div(dist12,2)-1), nmic)
-    totalresp = zeros(nfft, nmic)
-    harmonic = zeros(m-div(dist12,2), nmic)
-
-    info("OK 3")
-    for i = 1:nmic
-        info("nmic = $nmic")
-        dirac = real(iffn(ffn(ess, nfft) .* iessfft, nfft))/nfft
-        info("dirac ok")
-        measure = real(iffn(ffn(mics[:,i], nfft) .* iessfft, nfft))/nfft
-
-        totalresp[:,i] = measure
-        fundamental[:,i] = measure[m-div(dist12,2):end]
-        harmonic[:,i] = measure[1:m-div(dist12,2)]
-    end
-    fundamental, harmonic, totalresp
+    dist12 = Int64(round(log(2) * disoff * fs))
+    #fundamental = zeros(nfft-(m-div(dist12,2)-1), nmic)
+    #harmonic = zeros(m-div(dist12,2), nmic)
+    fundamental = measure[m-div(dist12,2):end,:]
+    harmonic = measure[1:m-div(dist12,2),:]
+    
+    return (fundamental, harmonic, dirac)
 end
 
 
