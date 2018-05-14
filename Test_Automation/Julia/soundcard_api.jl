@@ -43,4 +43,10 @@ module SoundcardAPI
     end
 
 
+    function mixer(x, mix::Array{Float32,2})
+        y = x * mix
+        maximum(abs.(y)) >= 1.0f0 && error("mixer: sample clipping!")
+        y
+    end
+
 end
