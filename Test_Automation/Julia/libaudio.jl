@@ -737,7 +737,7 @@ function impresp(ess::Matrix{Float64}, ndecay::Int64, f_start, f_stop, fs, mics:
     fundamental = measure[m-div(dist12,2):end,:]
     harmonic = measure[1:m-div(dist12,2),:]
     
-    return (fundamental, harmonic, dirac)
+    return (fundamental, harmonic, dirac, measure)
 end
 
 

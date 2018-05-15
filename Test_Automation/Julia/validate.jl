@@ -35,5 +35,5 @@ function validate_impulse_response_asio()
     mixrec = zeros(Float32, sndcard_n_in, mic_n)
     mixrec[2,1] = 1.0f0
     rsp = SoundcardAPI.mixer(SoundcardAPI.play_record(SoundcardAPI.mixer(sti, mixplay), sndcard_n_in, fs), mixrec)
-    fund, harm, dirac = LibAudio.impresp(ess, ndecay, f0, f1, fs, Float64.(rsp))
+    fund, harm, dirac, total = LibAudio.impresp(ess, ndecay, f0, f1, fs, Float64.(rsp))
 end
