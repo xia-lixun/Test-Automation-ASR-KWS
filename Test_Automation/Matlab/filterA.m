@@ -5,7 +5,7 @@
 % Author: M.Sc. Eng. Hristo Zhivomirov        06/01/14 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [xA,B,A] = filterA(x, fs, varargin)
+function xA = filterA(x, fs, varargin)
 
 % function: xA = filterA(x, fs, plotFilter)
 % x - singnal in the time domain

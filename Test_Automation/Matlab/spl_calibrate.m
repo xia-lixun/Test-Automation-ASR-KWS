@@ -15,8 +15,8 @@ function [g, dba_42aa] = spl_calibrate(symbol, symbol_gain_init, mix_spk, mix_mi
 
     g = symbol_gain_init;  
     assert(size(symbol, 2) == 1);
-    assert(size(mix_spk, 2) == 1);
-    assert(size(mix_mic, 1) == 1);
+    assert(size(mix_spk, 1) == 1);
+    assert(size(mix_mic, 2) == 1);
     
     y = [zeros(0.5*fs,1); (10^(g/20))*symbol; zeros(0.5*fs,1)];
     y = [zeros(3*fs,1); y;y;y; zeros(3*fs,1)];
@@ -85,8 +85,8 @@ function [g, dba_42aa] = spl_calibrate(symbol, symbol_gain_init, mix_spk, mix_mi
                                16384, ...
                                16384/4, ...
                                ' ');
-    if abs(dbspl_42aa - dbspl_42ab) > 0.1
-        error('calibration deviation > 0.1, please re-calibrate! Abort');
+    if abs(dbspl_42aa - dbspl_42ab) > 0.5
+        error('calibration deviation > 0.5 dB(A), please re-calibrate! Abort');
     else
         disp('calibration deviation: dB');
         disp(abs(dbspl_42aa - dbspl_42ab));

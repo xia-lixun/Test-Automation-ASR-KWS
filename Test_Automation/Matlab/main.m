@@ -1,179 +1,49 @@
 function main(ini_file)
 
-    config = ini2struct(ini_file);
-    tasks = fieldnames(config);
+% [1.1]  measure room default SPL in dB(A), if too noisy -> halt the process
+% [1.2]  mouth/loudspeaker EQ check, if EQ out-of-date, or shaped impulse response not flat enough -> halt the process
+% [1.3]  parse the test specification
+% [2.1]  set the orientation of the DUT
+% [2.2]  power cycle the DUT
+% [2.3]  mouth/loudspeaker SPL calibration, don't forget to apply mouth/spk EQ
+% [2.4]  DUT echo SPL calibration
+% [2.5]  start playback/recordings, don't forget to apply mouth/spk EQ
+% [2.6]  push recordings to ASR/KWS scoring server
+% [2.7]  fetch the scoring results and generate the report
+
+    fs = 48000;
+    soundcard_in_channels = 12;
+    soundcard_out_channels = 12;
+    soundcard_mic_port = 9;
+    soundcard_mic_type = '26AM';
+    soundcard_spk_port = [3,4,5,6];
+    soundcard_mth_port = [7,8,9];
+    barometer_correction = 0.0;
+    serial_port = 11;
+
     
-    for eachtask = 1:length(tasks)
-        
-        topic = tasks{eachtask}
-        room = ini_decomment(config.(tasks{eachtask}).room)
-        testtype = ini_decomment(config.(tasks{eachtask}).testtype)
-        dutorient = str2num(ini_decomment(config.(tasks{eachtask}).dutorientation))
-        report = ini_decomment(config.(tasks{eachtask}).report);
-        report = report(2:end-1)
-        
-        mouth50cm = ini_decomment(config.(tasks{eachtask}).mouth50cm);
-        mouth50cm = mouth50cm(2:end-1)
-        mouth1m = ini_decomment(config.(tasks{eachtask}).mouth1m);
-        mouth1m = mouth1m(2:end-1)
-        mouth3m = ini_decomment(config.(tasks{eachtask}).mouth3m);
-        mouth3m = mouth3m(2:end-1)
-        mouth5m = ini_decomment(config.(tasks{eachtask}).mouth5m);
-        mouth5m = mouth5m(2:end-1) 
-        mouthlevel = str2num(ini_decomment(config.(tasks{eachtask}).mouthlevel))
-        
-        noise = ini_decomment(config.(tasks{eachtask}).noise);
-        noise = noise(2:end-1)
-        noiselevel = str2num(ini_decomment(config.(tasks{eachtask}).noiselevel))
-        
-        echo = ini_decomment(config.(tasks{eachtask}).echo);
-        echo = echo(2:end-1)
-        echolevel = str2num(ini_decomment(config.(tasks{eachtask}).echolevel))
-        
-        
-        
-        refmic = ini_decomment(config.(tasks{eachtask}).refmic);
-        refmic = refmic(2:end-1)
-        micin = ini_decomment(config.(tasks{eachtask}).micin);
-        micin = micin(2:end-1)
-        micref = ini_decomment(config.(tasks{eachtask}).micref);
-        micref = micref(2:end-1)
-        micinput = ini_decomment(config.(tasks{eachtask}).micinput);
-        micinput = micinput(2:end-1)
-        dcblock = ini_decomment(config.(tasks{eachtask}).dcblock);
-        dcblock = dcblock(2:end-1)
-        aec = ini_decomment(config.(tasks{eachtask}).aec);
-        aec = aec(2:end-1)
-        fixedbeamformer = ini_decomment(config.(tasks{eachtask}).fixedbeamformer);
-        fixedbeamformer = fixedbeamformer(2:end-1)
-        globaleq = ini_decomment(config.(tasks{eachtask}).globaleq);
-        globaleq = globaleq(2:end-1)
-        spectralbeamsteering = ini_decomment(config.(tasks{eachtask}).spectralbeamsteering);
-        spectralbeamsteering = spectralbeamsteering(2:end-1)
-        adaptivebeamformer = ini_decomment(config.(tasks{eachtask}).adaptivebeamformer);
-        adaptivebeamformer = adaptivebeamformer(2:end-1)
-        noisereduction = ini_decomment(config.(tasks{eachtask}).noisereduction);
-        noisereduction = noisereduction(2:end-1)
-        asrleveler = ini_decomment(config.(tasks{eachtask}).asrleveler);
-        asrleveler = asrleveler(2:end-1)
-        asrlimiter = ini_decomment(config.(tasks{eachtask}).asrlimiter);
-        asrlimiter = asrlimiter(2:end-1)
-        callleveler = ini_decomment(config.(tasks{eachtask}).callleveler);
-        callleveler = callleveler(2:end-1)
-        expander = ini_decomment(config.(tasks{eachtask}).expander);
-        expander = expander(2:end-1)
-        calleq = ini_decomment(config.(tasks{eachtask}).calleq);
-        calleq = calleq(2:end-1)
-        calllimiter = ini_decomment(config.(tasks{eachtask}).calllimiter);
-        calllimiter = calllimiter(2:end-1)
-        micout = ini_decomment(config.(tasks{eachtask}).micout);
-        micout = micout(2:end-1)
-        
-        
-        fs = 48000;
-        soundcard_mic_channels = 12;
-        soundcard_spk_channels = 12;
-        barometer_correction = 0.0;
-        serial_port = 11;
-        
-        %======================================
-        % I. Measure room default SPL in dB(A)
-        %======================================
-        mic_route = zeros(1,soundcard_mic_channels);
-        mic_route(1,9) = 1.0;
-        room_noise_floor = soundcard_api_record(mic_route, 30, fs);
-        
-        % 1. load the latest calibrator recordings: 42AA and 42AB
-        [latest_42aa, dt_42aa] = latest_timestamp('Data/Calibration/42AA');
-        [latest_42ab, dt_42ab] = latest_timestamp('Data/Calibration/42AB');
-        disp('Use latest calibration files:')
-        disp(latest_42aa);
-        disp(latest_42ab);
-        
-        % 2. time assurance for valid calibration of reference mic
-        dt_now = datetime();
-        if hours(dt_now - dt_42aa) > 24
-            error('Over 24 hours passed since last calibration of the reference mic, please re-claibrate with 42AA! Abort.')
-        elseif hours(dt_now - dt_42ab) > 24
-            error('Over 24 hours passed since last calibration of the reference mic, please re-claibrate with 42AB! Abort.')
-        else
-            disp('Both latest reference mic calibrations are done within 24 hours, ok to proceed...')
-        end
-        
-        
-        % 3. spl (no weighting) shall give similar values for cross validation:
-        %    termiate the measurement if difference > 0.1
-        dbspl_42aa = sound_pressure_level(['Data/Calibration/42AA/',latest_42aa,'/cal-250hz-114dB(105.4dBA)_',mic_type,'_12AA(0dB)_UFX.wav'], ...
-            room_noise_floor, ...
-            room_noise_floor, ...
-            1, ...
-            0, ...
-            0, ...
-            100, ...
-            12000, ...
-            114+barometer_correction, ...
-            48000, ...
-            16384, ...
-            16384/4, ...
-            ' ');
-        dbspl_42ab = sound_pressure_level(['Data/Calibration/42AB/',latest_42ab,'/cal-1khz-114dB_',mic_type,'_12AA(0dB)_UFX.wav'], ...
-            room_noise_floor, ...
-            room_noise_floor, ...
-            1, ...
-            0, ...
-            0, ...
-            100, ...
-            12000, ...
-            114, ...
-            48000, ...
-            16384, ...
-            16384/4, ...
-            ' ');
-        if abs(dbspl_42aa - dbspl_42ab) > 0.1
-            error('calibration deviation > 0.1, please re-calibrate! Abort');
-        else
-            disp('calibration deviation: dB');
-            disp(abs(dbspl_42aa - dbspl_42ab));
-        end
-        
-        % 4. if cross validation ok, use 42AA for dBA measurement
-        dba_42aa = sound_pressure_level(['Data/Calibration/42AA/',latest_42aa,'/cal-250hz-114dB(105.4dBA)_',mic_type,'_12AA(0dB)_UFX.wav'], ...
-            room_noise_floor, ...
-            room_noise_floor, ...
-            1, ...
-            0, ...
-            0, ...
-            100, ...
-            12000, ...
-            105.4, ...
-            48000, ...
-            16384, ...
-            16384/4, ...
-            'a-weight');
-        disp('dBA of room noise floor:');
-        disp(dba_42aa);
-        if dba_42aa > 30
-            error('room is too noisy for automatic measurement? abort.');
-        end
-        
-        %===================================
-        % II. Set the orientation of the DUT
-        %===================================
+    room_default_dba(soundcard_in_channels, soundcard_mic_port, soundcard_mic_type, fs, barometer_correction);                                   % [1.1]
+    param = check_mouth_loudspk_eq(soundcard_out_channels, soundcard_in_channels, soundcard_mth_port, soundcard_spk_port, soundcard_mic_port);   % [1.2]
+    param = parse_task_specification(ini_file, param);                                                                                           % [1.3]
+    
+    for i = 1:length(param.task)
+        % [2.1]
         % always put the DUT 0 degree to the mouth, 
         % the turntable will set the correct orientation!
         turntable_set_origin(serial_port);
-        turntable_rotate(serial_port, dutorient, 'CCW');
+        turntable_rotate(serial_port, param.task(i).dutorient, 'CCW');
+        
+        % [2.2]
+        system(['julia ', fullfile(pwd(), 'Julia', 'power_reset.jl')]);
         
         
+
+        
+        
+        
+       
         %===================================
-        % III. Power cycle the DUT
-        %===================================
-        pwrst_script = fullfile(pwd(), 'Julia', 'power_reset.jl');
-        system(['julia ', pwrst_script]);
-        
-        
-        %===================================
-        % IV. Speech/Noise SPL calibration
+        % V. Mouth/loudspeaker SPL calibration
         %===================================
         [symbol, rate] = audioread('Data/Symbol/LevelCalibration.wav');
         assert(rate == fs);
@@ -225,7 +95,7 @@ function main(ini_file)
             [g_noise_spk_together, dba_42aa] = spl_calibrate_multi_source(symbol, 0.0, spk_route.', mic_route, '26AM', fs, noiselevel, 0.0, 'asio');
         end
         
-        %(5) echo spl calibration
+        %(5) DUT echo spl calibration
         g_echo = 0;
         if echolevel ~= 0
             [source, rate] = audioread('Data\Symbol\EchoCalibration.wav');
@@ -240,7 +110,6 @@ function main(ini_file)
         %(6) start the playback/recording
         %(7) push result to asr/kws scoring server
         %(8) fetch the scoring results and generate the report
-        
-    end
+    end    
     
 end

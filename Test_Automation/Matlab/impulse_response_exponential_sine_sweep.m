@@ -10,7 +10,7 @@
 %
 % Dependency: sound-card tool for play and recording if device = 'asio'
 %
-function [fundamental, harmonic, response_t] = impulse_response_exponential_sine_sweep(mix_spk, ...
+function [fundamental, harmonic, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, ...
                                                                                        mix_mic, ...
                                                                                        f0, ...
                                                                                        f1, ...
@@ -127,7 +127,7 @@ else
         audiowrite(playback, mixer(stimulus_async, mix_spk), FS, 'BitsPerSample', 32);
         
         luxPlayAndRecord(playback, ceil(length(stimulus_async)/FS), cellstr('mic_8ch_16k_s16_le'))   %blocking
-        raw2wav_16bit('mic_8ch_16k_s16_le.raw', size(mix_mic,2), 16000, 'mic_8ch_16k_s16_le.wav');
+        raw2wav_16bit('mic_8ch_16k_s16_le.raw', size(mix_mic,1), 16000, 'mic_8ch_16k_s16_le.wav');
         [temp, rate] = audioread('mic_8ch_16k_s16_le.wav');
         assert(rate == 16000);
         audiowrite(capture, resample(temp,FS,16000), FS, 'BitsPerSample',32);
@@ -144,7 +144,7 @@ else
         soundcard_api_play(stimulus_async, mix_spk, FS, false);   % is_blocking == false
         
         luxRecord(ceil(length(stimulus_async)/FS), cellstr('mic_8ch_16k_s16_le'))   %blocking
-        raw2wav_16bit('mic_8ch_16k_s16_le.raw', size(mix_mic,2), 16000, 'mic_8ch_16k_s16_le.wav');
+        raw2wav_16bit('mic_8ch_16k_s16_le.raw', size(mix_mic,1), 16000, 'mic_8ch_16k_s16_le.wav');
         [temp, rate] = audioread('mic_8ch_16k_s16_le.wav');
         assert(rate == 16000);
         audiowrite(capture, resample(temp,FS,16000), FS, 'BitsPerSample',32);
@@ -178,7 +178,7 @@ else
     
     
     %@ extract(decode) the response
-    n_mic = size(mix_mic, 1);
+    n_mic = size(mix_mic, 2);
     symbol_locs = zeros(2,n_mic);
     for channel = 1:n_mic
         [left_bounds, corr_peaks, extracted]= locate_sync_symbol(mics(:,channel), g, 2);
@@ -228,39 +228,22 @@ end
 %@calculate impulse response
 %@convolve with the gain-compensated inverse filter
 period = m + n;
-n_mic = size(mix_mic,1);
 nfft = 2^(nextpow2(m + period - 1));
 essinvfft = fft(essinv,nfft);
 
 
 distance_offset = time_ess / log(F_STOP/F_START);
 distance_12 = round(log(2) * distance_offset * FS);
-fundamental = zeros(nfft - (m-round(distance_12/2)-1), n_mic);
-response_t = zeros(nfft, n_mic);
-
 %distance_13 = round(log(3) * distance_offset * FS);
 %distance_23 = distance_13 - distance_12;
 %harmonic_2nd = zeros(m-round(distance_12/2) - (m - distance_12 - round(distance_23/2)) + 1, n_mic);
-harmonic = zeros(m-round(distance_12/2), n_mic);
-
-for channel = 1:n_mic
-    
-    mic_ichannel = mics(:, channel);            
-    impulse = real(ifft(fft(ess,nfft).* essinvfft, nfft))/nfft;
-    response = real(ifft(fft(mic_ichannel,nfft).* essinvfft, nfft))/nfft;    
-   
-    figure; hold on; plot(impulse); plot(response); grid on;
-    
-    response_t(:,channel) = response;
-    fundamental(:,channel) = response(m-round(distance_12/2):end);
-    
-    %harmonic_2nd(:,channel) = response(m - distance_12 - round(distance_23/3) : m-round(distance_12/3));
-    harmonic(:,channel) = response(1:m-round(distance_12/2));
-end
 
 
-
-
+dirac = real(ifft(fft(ess,nfft).* essinvfft, nfft))/nfft;
+response = real(ifft(fft(mics,nfft) .* essinvfft, nfft))/nfft;    
+fundamental = response(m-round(distance_12/2):end);
+harmonic = response(1:m-round(distance_12/2));
+%harmonic_2nd(:,channel) = response(m - distance_12 - round(distance_23/3) : m-round(distance_12/3));
 
 
 end

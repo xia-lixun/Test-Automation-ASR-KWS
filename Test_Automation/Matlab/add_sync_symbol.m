@@ -2,6 +2,12 @@ function y = add_sync_symbol(test_signal, time_context_switch, sync_symbol, time
     % this function encode the content of the stimulus for playback if sync
     % (guard) symbols are needed for asynchronous operations.
     %
+    % +----------+------+-------+--------------------+------+-------+
+    % | t_switch | sync | decay |   test   signal    | sync | decay |
+    % +----------+------+-------+--------------------+------+-------+
+    % t_switch is time for DUT context switch
+    % decay is inserted to separate dynamics of sync and the test signal
+    %
     % for example:
     %     signal = [randn(8192,1); zeros(65536,1)];
     %     g = sync_symbol(1000, 1250, 1, 48000) * (10^(-3/20));

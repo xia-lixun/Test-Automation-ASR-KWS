@@ -14,7 +14,7 @@ function [g, dba_42aa] = spl_calibrate_multi_source(source, gain_init, mix_spk, 
 % dba_42aa:             measured dbA when g applied
 
     g = gain_init;
-    assert(size(mix_mic, 1) == 1); % we only do single-mic SPL measurement
+    assert(size(mix_mic, 2) == 1); % we only do single-mic SPL measurement
     
     sync = sync_symbol(220, 8000, 1, fs) * (10^(-6/20));
     sync_decay = 3;
@@ -98,8 +98,8 @@ function [g, dba_42aa] = spl_calibrate_multi_source(source, gain_init, mix_spk, 
                                16384, ...
                                16384/4, ...
                                ' ');
-    if abs(dbspl_42aa - dbspl_42ab) > 0.1
-        error('calibration deviation > 0.1, please re-calibrate! Abort');
+    if abs(dbspl_42aa - dbspl_42ab) > 0.5
+        error('calibration deviation > 0.5 dB(A), please re-calibrate! Abort');
     else
         disp('calibration deviation: dB');
         disp(abs(dbspl_42aa - dbspl_42ab));
