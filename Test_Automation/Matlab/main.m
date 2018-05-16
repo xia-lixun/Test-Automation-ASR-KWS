@@ -39,14 +39,11 @@ function main(ini_file)
         system(['julia ', fullfile(pwd(), 'Julia', 'power_reset.jl')]);
         
         % [2.3]
+        [param, soundcard_mouth_active] = apply_mouth_eq(param, i, fs);       % -> param.task(i).data.mouth
+        if ~isempty(param.task(i).noise)
+            param = apply_loudspk_eq(param, i, fs);                           % -> param.task(i).data.noise
+        end
         
-        
-        
-        [temp_x, rate] = audioread(param.task(i).noise);
-        assert(rate == fs);
-        assert(size(temp_x,2) == 4);
-        
-       
         %===================================
         % V. Mouth/loudspeaker SPL calibration
         %===================================

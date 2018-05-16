@@ -40,68 +40,41 @@ function param = check_mouth_loudspk_eq(soundcard_out_channels, ...
         end
         
         % load the latest eq filters
-        param.eq.mouth05 = load('Data/Equalization/Mouth-05/', latest_m05 ,'/fir_min_phase.mat');
-        param.eq.mouth10 = load('Data/Equalization/Mouth-10/', latest_m10 ,'/fir_min_phase.mat');
-        param.eq.mouth35 = load('Data/Equalization/Mouth-35/', latest_m35 ,'/fir_min_phase.mat');
+        param.eq.mouth(1) = load('Data/Equalization/Mouth-05/', latest_m05 ,'/fir_min_phase.mat');
+        param.eq.mouth(2) = load('Data/Equalization/Mouth-10/', latest_m10 ,'/fir_min_phase.mat');
+        param.eq.mouth(3) = load('Data/Equalization/Mouth-35/', latest_m35 ,'/fir_min_phase.mat');
 
-        param.eq.loudspk1 = load('Data/Equalization/LoudSPK-1/', latest_s1 ,'/fir_min_phase.mat');
-        param.eq.loudspk2 = load('Data/Equalization/LoudSPK-2/', latest_s2 ,'/fir_min_phase.mat');
-        param.eq.loudspk3 = load('Data/Equalization/LoudSPK-3/', latest_s3 ,'/fir_min_phase.mat');
-        param.eq.loudspk4 = load('Data/Equalization/LoudSPK-4/', latest_s4 ,'/fir_min_phase.mat');
+        param.eq.spk(1) = load('Data/Equalization/LoudSPK-1/', latest_s1 ,'/fir_min_phase.mat');
+        param.eq.spk(2) = load('Data/Equalization/LoudSPK-2/', latest_s2 ,'/fir_min_phase.mat');
+        param.eq.spk(3) = load('Data/Equalization/LoudSPK-3/', latest_s3 ,'/fir_min_phase.mat');
+        param.eq.spk(4) = load('Data/Equalization/LoudSPK-4/', latest_s4 ,'/fir_min_phase.mat');
         
         % measure impulse response with eq in the loop
         mix_mic = zeros(soundcard_in_channels, 1); 
         mix_mic(soundcard_mic_port, 1) = 1.0;
         
-        mix_spk = zeros(1, soundcard_out_channels); 
-        mix_spk(1, soundcard_spk_port(1)) = 1.0;
-        [fundspk1, harmspk1, respspk1, diracspk1] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.loudspk1.eqFilter, 1, -30); % fireface -> fireface
-        mix_spk = zeros(1, soundcard_out_channels); 
-        mix_spk(1, soundcard_spk_port(2)) = 1.0;
-        [fundspk2, harmspk2, respspk2, diracspk2] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.loudspk2.eqFilter, 1, -30);
-        mix_spk = zeros(1, soundcard_out_channels); 
-        mix_spk(1, soundcard_spk_port(3)) = 1.0;
-        [fundspk3, harmspk3, respspk3, diracspk3] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.loudspk3.eqFilter, 1, -30);
-        mix_spk = zeros(1, soundcard_out_channels); 
-        mix_spk(1, soundcard_spk_port(4)) = 1.0;
-        [fundspk4, harmspk4, respspk4, diracspk4] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.loudspk4.eqFilter, 1, -30);
         
-        mix_mth = zeros(1, soundcard_out_channels); 
-        mix_mth(1, soundcard_mth_port(1)) = 1.0;
-        [fundmou05, harmmou05, respmou05, diracmou05] = impulse_response_exponential_sine_sweep(mix_mth, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.mouth05.eqFilter, 1, -30);
-        mix_mth = zeros(1, soundcard_out_channels); 
-        mix_mth(1, soundcard_mth_port(2)) = 1.0;
-        [fundmou10, harmmou10, respmou10, diracmou10] = impulse_response_exponential_sine_sweep(mix_mth, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.mouth10.eqFilter, 1, -30);
-        mix_mth = zeros(1, soundcard_out_channels); 
-        mix_mth(1, soundcard_mth_port(3)) = 1.0;
-        [fundmou35, harmmou35, respmou35, diracmou35] = impulse_response_exponential_sine_sweep(mix_mth, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.mouth35.eqFilter, 1, -30);
+        figure; hold on; grid on;
+        for i = 1:4
+            mix_spk = zeros(1, soundcard_out_channels); 
+            mix_spk(1, soundcard_spk_port(i)) = 1.0;
+            [fund, harm, resp, ideal] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.spk(i).eqFilter, 1, -30); % fireface -> fireface
+            [h,w] = freqz(fund, 1);
+            plot(w/pi, 20*log10(abs(h)));
+        end
+        title('speaker impulse response with eq')
+        
 
-        figure; hold on; plot(diracspk1, 'b'); plot(respspk1, 'r');  grid on;
-        figure; hold on; plot(diracspk2, 'b'); plot(respspk2, 'r');  grid on;
-        figure; hold on; plot(diracspk3, 'b'); plot(respspk3, 'r');  grid on;
-        figure; hold on; plot(diracspk4, 'b'); plot(respspk4, 'r');  grid on;
+        figure; hold on; grid on;
+        for i = 1:3
+            mix_mth = zeros(1, soundcard_out_channels); 
+            mix_mth(1, soundcard_mth_port(i)) = 1.0;
+            [fund, harm, resp, ideal] = impulse_response_exponential_sine_sweep(mix_mth, mix_mic, 100, 22000, 10, 5, 'asio', param.eq.mouth(i).eqFilter, 1, -30);
+            [h,w] = freqz(fund, 1);
+            plot(w/pi, 20*log10(abs(h)));
+        end
+        title('mouth impulse response with eq')
 
-        figure; hold on; plot(diracmou05, 'b'); plot(respmou05, 'r');  grid on;
-        figure; hold on; plot(diracmou10, 'b'); plot(respmou10, 'r');  grid on;
-        figure; hold on; plot(diracmou35, 'b'); plot(respmou35, 'r');  grid on;
-
-        freqz(fundspk1,1);
-        freqz(fundspk2,1);
-        freqz(fundspk3,1);
-        freqz(fundspk4,1);
-        
-        freqz(fundmou05,1);
-        freqz(fundmou10,1);
-        freqz(fundmou35,1);
-        
-        freqz(harmspk1,1);
-        freqz(harmspk2,1);
-        freqz(harmspk3,1);
-        freqz(harmspk4,1);
-        
-        freqz(harmmou05,1);
-        freqz(harmmou10,1);
-        freqz(harmmou35,1);
         
         %[place holder] need to add method for impulse response validation,
         %               for example ripple fluctuation of the response...
