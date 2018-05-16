@@ -13,13 +13,13 @@ function param = parse_task_specification(ini_file, param)
         param.task(i).report = report(2:end-1);
         
         mouth50cm = ini_decomment(config.(tasks{i}).mouth50cm);
-        param.task(i).mouth50cm = mouth50cm(2:end-1);
+        param.task(i).mouth05 = mouth50cm(2:end-1);
         mouth1m = ini_decomment(config.(tasks{i}).mouth1m);
-        param.task(i).mouth100cm = mouth1m(2:end-1);
+        param.task(i).mouth10 = mouth1m(2:end-1);
         mouth3m = ini_decomment(config.(tasks{i}).mouth3m);
-        param.task(i).mouth300cm = mouth3m(2:end-1);
+        param.task(i).mouth30 = mouth3m(2:end-1);
         mouth5m = ini_decomment(config.(tasks{i}).mouth5m);
-        param.task(i).mouth500cm = mouth5m(2:end-1);
+        param.task(i).mouth50 = mouth5m(2:end-1);
         param.task(i).mouthlevel = str2double(ini_decomment(config.(tasks{i}).mouthlevel));
         
         noise = ini_decomment(config.(tasks{i}).noise);
@@ -68,5 +68,5 @@ function param = parse_task_specification(ini_file, param)
         param.task(i).calllimiter = calllimiter(2:end-1);
         micout = ini_decomment(config.(tasks{i}).micout);
         param.task(i).micout = micout(2:end-1);
-        
+    end    
 end

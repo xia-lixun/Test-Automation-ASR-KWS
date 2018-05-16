@@ -5,11 +5,12 @@ function main(ini_file)
 % [1.3]  parse the test specification
 % [2.1]  set the orientation of the DUT
 % [2.2]  power cycle the DUT
-% [2.3]  mouth/loudspeaker SPL calibration, don't forget to apply mouth/spk EQ
-% [2.4]  DUT echo SPL calibration
-% [2.5]  start playback/recordings, don't forget to apply mouth/spk EQ
-% [2.6]  push recordings to ASR/KWS scoring server
-% [2.7]  fetch the scoring results and generate the report
+% [2.3]  apply EQ to speech and noise files, peak normalized avoid clipping
+% [2.4]  mouth/loudspeaker SPL calibration (use signals after EQ)
+% [2.5]  DUT echo SPL calibration
+% [2.6]  start playback/recordings (use signals after EQ)
+% [2.7]  push recordings to ASR/KWS scoring server
+% [2.8]  fetch the scoring results and generate the report
 
     fs = 48000;
     soundcard_in_channels = 12;
@@ -27,6 +28,7 @@ function main(ini_file)
     param = parse_task_specification(ini_file, param);                                                                                           % [1.3]
     
     for i = 1:length(param.task)
+        
         % [2.1]
         % always put the DUT 0 degree to the mouth, 
         % the turntable will set the correct orientation!
@@ -36,31 +38,19 @@ function main(ini_file)
         % [2.2]
         system(['julia ', fullfile(pwd(), 'Julia', 'power_reset.jl')]);
         
+        % [2.3]
         
-
         
         
+        [temp_x, rate] = audioread(param.task(i).noise);
+        assert(rate == fs);
+        assert(size(temp_x,2) == 4);
         
        
         %===================================
         % V. Mouth/loudspeaker SPL calibration
         %===================================
-        [symbol, rate] = audioread('Data/Symbol/LevelCalibration.wav');
-        assert(rate == fs);
-        spk_route = zeros(size(symbol,2), soundcard_spk_channels);
-        if mouth50cm ~= '""'
-            spk_route(1,7) = 1.0;
-        end
-        if mouth1m ~= '""'
-            spk_route(1,8) = 1.0;
-        end
-        if mouth3m ~= '""'
-            spk_route(1,9) = 1.0;
-        end
-        if mouth5m ~= '""'
-            spk_route(1,9) = 1.0;
-        end
-        [g_mouth, dba_42aa] = spl_calibrate(symbol, -30, spk_route.', mic_route, '26AM', fs, mouthlevel, 0.0, 'asio');
+
         
         %(4) noise spl calibration
         g_noise_spk = zeros(1,4);

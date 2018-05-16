@@ -8,9 +8,9 @@ clc;
 % mic: 9
 
 %% test of [impulse response and distortion measurement]
-mix_spk = zeros(1,8); mix_spk(1,3) = 1.0;
+mix_spk = zeros(1,8); mix_spk(1,7) = 1.0;
 mix_mic = zeros(12,1); mix_mic(9,1) = 1.0;
-[fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'asio', [1], [1], -6); % fireface -> fireface
+[fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'asio', [1], [1], -12); % fireface -> fireface
 figure; plot(fundamental); grid on;
 figure; plot(harmonics); grid on;
 figure; hold on; plot(response); plot(dirac); grid on;
@@ -46,6 +46,11 @@ figure; hold on; plot(response); plot(dirac); grid on;
 
 
 
+
+
+
+
+
 %% test of [update calibrator recordings]
 add_calibrator_recordings(9, 120, '26AM', '42AA');
 %%
@@ -65,7 +70,7 @@ assert(fs == 48000);
 %[g, dba_42aa] = spl_calibrate(symbol, g, [1,1], [0,0,0,0,0,0,0,0,1].', '26AM', fs, 60, 0.0, 'fileio'); % fine adjustment
 
 %% test of multi-source [SPL calibrated to specified dBA] on noise loudspeakers
-[source,fs] = audioread('Data/LevelCalibration4ch.wav');
+[source,fs] = audioread('Data/Symbol/LevelCalibration4ch.wav');
 assert(fs == 48000);
 mix_spk = zeros(4,8);
 mix_spk(1,3) = 1;
@@ -106,36 +111,41 @@ clc
 %                    so change the routing matrix accordingly!
 %%
 f_anchor = 100; %Hz
-h = eq_calibration([0,0,1,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
+h = eq_calibration([0,0,1,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -24);
 add_equalization_filters(h, 'LoudSPK-1');
 %%
 f_anchor = 100; %Hz
-h = eq_calibration([0,0,0,1,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
+h = eq_calibration([0,0,0,1,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -24);
 add_equalization_filters(h, 'LoudSPK-2');
 %%
 f_anchor = 100; %Hz
-h = eq_calibration([0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
+h = eq_calibration([0,0,0,0,1,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -24);
 add_equalization_filters(h, 'LoudSPK-3');
 %%
 f_anchor = 100; %Hz
-h = eq_calibration([0,0,0,0,0,1,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
+h = eq_calibration([0,0,0,0,0,1,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -24);
 add_equalization_filters(h, 'LoudSPK-4');
 %%
-f_anchor = 100; %Hz
+f_anchor = 70; %Hz
 h = eq_calibration([0,0,0,0,0,0,1,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
 add_equalization_filters(h, 'Mouth-05');
 %%
-f_anchor = 100; %Hz
+f_anchor = 70; %Hz
 h = eq_calibration([0,0,0,0,0,0,0,1,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
 add_equalization_filters(h, 'Mouth-10');
 %%
-f_anchor = 100; %Hz
+f_anchor = 70; %Hz
 h = eq_calibration([0,0,0,0,0,0,0,0,1,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, -30);
-freqz(h, 1)
 add_equalization_filters(h, 'Mouth-35');
+
+
+
+
+
+%% test of turn table
+serial_port = 1;
+turntable_set_origin(serial_port);
+turntable_rotate(serial_port, 11.7, 'CCW');
+
+%% test of power cycle of the dut
+system(['julia ', fullfile(pwd(), 'Julia', 'power_reset.jl')]);
