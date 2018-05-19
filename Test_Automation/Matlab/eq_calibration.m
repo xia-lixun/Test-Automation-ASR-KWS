@@ -1,4 +1,4 @@
-function hFIR = eq_calibration(mix_spk, mix_mic, f_anchor, atten)
+function hFIR = eq_calibration(mix_spk, mix_mic, f_anchor, f_stop, atten)
 
     fs = 48000;
     ess_f0 = 10;
@@ -46,14 +46,17 @@ function hFIR = eq_calibration(mix_spk, mix_mic, f_anchor, atten)
     
     
     % do the actual flatten work
-    f1 = 22;
-    f2 = 22000;
+    %f1 = 22;
+    f1 = f_anchor;
+    f2 = f_stop;
     f1 = ceil(f1 * nfft / fs);
     f2 = floor(f2 * nfft / fs);
     target = x_spec_db_sm(round(f_anchor * nfft / fs));
+    %target = x_spec_db(round(f_anchor * nfft / fs));
     H = zeros(nnyq,1);
     H(f1:f2) = target - x_spec_db_sm(f1:f2);
-    H(1:f1-1) = 10;
+    %H(f1:f2) = target - x_spec_db(f1:f2);
+    H(1:f1-1) = 0;
     figure(3); semilogx(f, H, 'r'); hold on; 
     
     % compensation filter in time and frequency domain
