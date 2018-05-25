@@ -3,16 +3,18 @@
 #include <string>
 
 #include "PaTask.h"
+#include "list_devices.h"
 
 
 
 
-
+// ps --device
 // pa --play foo.wav --rate 48000 
 // pa --record bar.wav --rate 48000 --channels 4 --duration 4.5 --bits 24
 // pa --play foo.wav --record bar.wav --rate 48000 --channels 4 --bits 24
 int main(int argc, char* argv[])
 {
+	//--device
 	//--play     foo.wav
 	//--record   bar.wav
 	//--rate     48000
@@ -21,6 +23,7 @@ int main(int argc, char* argv[])
 	//--bits     24
 	bool is_play = false;
 	bool is_record = false;
+	bool is_device = false;
 
 	const char * path_play = "";
 	const char * path_record = "";
@@ -31,6 +34,10 @@ int main(int argc, char* argv[])
 
 	for (int i = 1; i < argc; i++)
 	{
+		if (strcmp(argv[i], "--device") == 0)
+		{
+			is_device = true;
+		}
 		if (strcmp(argv[i], "--play") == 0)
 		{
 			is_play = true;
@@ -72,7 +79,9 @@ int main(int argc, char* argv[])
 	printf("duration = %f\n", duration);
 	printf("bits = %d\n", bits);
 
-	if(is_play && (!is_record))
+	if (is_device)
+		return list_devices();
+	else if(is_play && (!is_record))
 		return play(path_play, rate);
 	else if((!is_play) && is_record)
 		return record(path_record, rate, channels, duration, bits);

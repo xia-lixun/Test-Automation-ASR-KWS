@@ -133,12 +133,14 @@
     <ClInclude Include="include\pa_win_wmme.h" />
     <ClInclude Include="include\portaudio.h" />
     <ClInclude Include="src\CsWav.h" />
+    <ClInclude Include="src\list_devices.h" />
     <ClInclude Include="src\PaTask.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CsWav.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\PaTask.cpp" />
+    <ClCompile Include="src\pa_devs.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

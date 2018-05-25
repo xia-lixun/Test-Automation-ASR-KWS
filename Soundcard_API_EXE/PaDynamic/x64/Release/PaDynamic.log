@@ -1,1 +1,9 @@
-﻿
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\VC\VCTargets\Microsoft.CppBuild.targets(391,5): warning MSB8028: The intermediate directory (x64\Release\) contains files shared from another project (PaDynamic.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  pa_devs.c
+     Creating library D:\Git\Test-Automation-ASR-KWS\Soundcard_API_EXE\x64\Release\soundcard_api.lib and object D:\Git\Test-Automation-ASR-KWS\Soundcard_API_EXE\x64\Release\soundcard_api.exp
+  Generating code
+  All 147 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  PaDynamic.vcxproj -> D:\Git\Test-Automation-ASR-KWS\Soundcard_API_EXE\x64\Release\soundcard_api.exe
+  D:\Git\Test-Automation-ASR-KWS\Soundcard_API_EXE\x64\Release\soundcard_api.exe
+  1 File(s) copied

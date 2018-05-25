@@ -7,6 +7,16 @@ module SoundcardAPI
     # int record(float * pcm_record, int64_t record_channels, int64_t record_frames, int64_t samplerate);
     # int play(const float * pcm_play, int64_t play_channels, int64_t play_frames, int64_t samplerate);
     # int playrecord(const float * pcm_play, int64_t play_channels, float * pcm_record, int64_t record_channels, int64_t common_frames, int64_t samplerate);
+    function device()
+        buffer = zeros(Int8, 8192)
+        numdev = ccall((:list_devices, "soundcard_api"), Int32, (Ptr{Int8},), buffer)
+        digest = ""
+        for i in buffer
+            digest = digest * string(Char(i))
+        end
+        report = split(digest,'\n')
+        numdev, report[1:end-1]
+    end
 
 
     function record(dim::Tuple{Int64, Int64}, fs::Int64)    # -> Matrix{Float32}
