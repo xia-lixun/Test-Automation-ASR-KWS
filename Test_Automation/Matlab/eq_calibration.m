@@ -16,7 +16,6 @@ function hFIR = eq_calibration(mix_spk, mix_mic, f_anchor, f_stop, atten)
     %@ cut the window with the impulse response out for analysis
     p = 4.3e4;
     x = fundamental(p+1:p+nfft);
-    
     x_spec = fft(x)./nfft;
     x_phase = angle(x_spec);
     f = ((0:nnyq-1)'./nfft).*fs;
@@ -25,8 +24,10 @@ function hFIR = eq_calibration(mix_spk, mix_mic, f_anchor, f_stop, atten)
     % smooth and plots
     Noct = 3;
     x_spec_db_sm = smoothSpectrum(x_spec_db,f,Noct);
-    subplot(2,1,1); plot(x); title('Un-EQ impulse response in time domain'); xlabel('samples'); grid on;
-    subplot(2,1,2); semilogx(f,x_spec_db,f,x_spec_db_sm); title('impulse response in frequency domain, with 1/3 octave smoothing'); xlabel('Hz'); grid on
+    figure(1);
+    subplot(2,1,1); plot(20*log10(abs(x))); title('impulse response in time domain'); xlabel('samples'); hold on;
+    %subplot(2,1,2); semilogx(f,x_spec_db,f,x_spec_db_sm); title('impulse response in frequency domain, with 1/3 octave smoothing'); xlabel('Hz'); hold on;
+    subplot(2,1,2); semilogx(f,x_spec_db_sm); title('impulse response in frequency domain, with 1/3 octave smoothing'); xlabel('Hz'); hold on;
     
     
     % construct a minimal phase filter of the smoothed impulse response
@@ -75,6 +76,21 @@ function hFIR = eq_calibration(mix_spk, mix_mic, f_anchor, f_stop, atten)
     figure(2); semilogx(f, 20*log10(abs(hms(1:nnyq)))+x_spec_db_sm, 'b'); grid on;
     
     [fundamental, harmonics, response_t] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, ess_f0, ess_f1, ess_time, ess_decay, 'asio', hm/nfft, [1], atten);
-    figure(4); freqz(fundamental, [1]);
+    
+    p = 4.3e4;
+    x = fundamental(p+1:p+nfft);
+    x_spec = fft(x)./nfft;
+    x_phase = angle(x_spec);
+    f = ((0:nnyq-1)'./nfft).*fs;
+    x_spec_db = 20*log10(abs(x_spec(1:nnyq)));
+    
+    % smooth and plots
+    Noct = 3;
+    x_spec_db_sm = smoothSpectrum(x_spec_db,f,Noct);
+    figure(1);
+    subplot(2,1,1); plot(20*log10(abs(x)), 'r'); grid on;
+    %subplot(2,1,2); semilogx(f,x_spec_db,f,x_spec_db_sm); grid on;
+    subplot(2,1,2); semilogx(f,x_spec_db_sm); grid on;
+    
     hFIR = hm / nfft;
 end

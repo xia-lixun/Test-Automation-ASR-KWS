@@ -8,41 +8,59 @@ clc;
 % mic: 9
 
 %% test of [impulse response and distortion measurement]
-mix_spk = zeros(1,8); mix_spk(1,7) = 1.0;
+mix_spk = zeros(1,8); mix_spk(1,3) = 1.0;
 mix_mic = zeros(12,1); mix_mic(9,1) = 1.0;
-[fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'asio', [1], [1], -12); % fireface -> fireface
-figure; plot(fundamental); grid on;
-figure; plot(harmonics); grid on;
-figure; hold on; plot(response); plot(dirac); grid on;
-figure; freqz(fundamental,1);
+[fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 30, 5, 'asio', [1], [1], -12); % fireface -> fireface
+
+figure; plot(20*log10(abs(fundamental))); grid on;
+figure; hold on; plot(dirac,'b'); plot(response,'r');  grid on;
+[h1,w1] = freqz(fundamental,1);
+[h2,w2] = freqz(harmonics,1);
+figure; semilogx(w1/pi*24000, 20*log10(abs(h1)), 'b'); hold on; semilogx(w2/pi*24000, 20*log10(abs(h2)), 'r'); grid on;
+
 %% test of [simulation]
 mix_spk = zeros(1,8); mix_spk(1,2) = 1.0;
 mix_mic = zeros(8,1); mix_mic(2,1) = 1.0;
 [fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'simulation', [1], [1], -3); % simulation
-figure; plot(fundamental); grid on;
-figure; plot(harmonics); grid on;
-figure; hold on; plot(response); plot(dirac); grid on;
+
+figure; plot(20*log10(abs(fundamental))); grid on;
+figure; hold on; plot(dirac,'b'); plot(response,'r');  grid on;
+[h1,w1] = freqz(fundamental,1);
+[h2,w2] = freqz(harmonics,1);
+figure; semilogx(w1/pi*24000, 20*log10(abs(h1)), 'b'); hold on; semilogx(w2/pi*24000, 20*log10(abs(h2)), 'r'); grid on;
+
 %%
 mix_spk = zeros(1,2); mix_spk(1,2) = 1.0;
 mix_mic = eye(8); 
 [fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'fileio', [1], [1], -20); % DUT -> DUT
-figure; plot(fundamental); grid on;
-figure; plot(harmonics); grid on;
-figure; hold on; plot(response); plot(dirac); grid on;
+
+figure; plot(20*log10(abs(fundamental))); grid on;
+figure; hold on; plot(dirac,'b'); plot(response,'r');  grid on;
+[h1,w1] = freqz(fundamental,1);
+[h2,w2] = freqz(harmonics,1);
+figure; semilogx(w1/pi*24000, 20*log10(abs(h1)), 'b'); hold on; semilogx(w2/pi*24000, 20*log10(abs(h2)), 'r'); grid on;
+
 %%
 mix_spk = zeros(1,8); mix_spk(1,3) = 1.0;
 mix_mic = eye(8); 
 [fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'asio_fileio', [1], [1], -6); % fireface -> DUT
-figure; plot(fundamental); grid on;
-figure; plot(harmonics); grid on;
-figure; hold on; plot(response); plot(dirac); grid on;
+
+figure; plot(20*log10(abs(fundamental))); grid on;
+figure; hold on; plot(dirac,'b'); plot(response,'r');  grid on;
+[h1,w1] = freqz(fundamental,1);
+[h2,w2] = freqz(harmonics,1);
+figure; semilogx(w1/pi*24000, 20*log10(abs(h1)), 'b'); hold on; semilogx(w2/pi*24000, 20*log10(abs(h2)), 'r'); grid on;
+
 %%
 mix_spk = zeros(1,2); mix_spk(1,2) = 1.0;
 mix_mic = zeros(12,1); mix_mic(9,1) = 1.0;
 [fundamental, harmonics, response, dirac] = impulse_response_exponential_sine_sweep(mix_spk, mix_mic, 100, 12000, 10, 5, 'fileio_asio', [1], [1], -6); % DUT -> fireface
-figure; plot(fundamental); grid on;
-figure; plot(harmonics); grid on;
-figure; hold on; plot(response); plot(dirac); grid on;
+
+figure; plot(20*log10(abs(fundamental))); grid on;
+figure; hold on; plot(dirac,'b'); plot(response,'r');  grid on;
+[h1,w1] = freqz(fundamental,1);
+[h2,w2] = freqz(harmonics,1);
+figure; semilogx(w1/pi*24000, 20*log10(abs(h1)), 'b'); hold on; semilogx(w2/pi*24000, 20*log10(abs(h2)), 'r'); grid on;
 
 
 
