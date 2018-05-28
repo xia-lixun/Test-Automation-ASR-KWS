@@ -1,14 +1,6 @@
-﻿  PaTask.cpp
-d:\git\test-automation-asr-kws\soundcard_api_dll\padynamic\src\patask.cpp(79): warning C4244: 'argument': conversion from 'size_t' to 'double', possible loss of data
-d:\git\test-automation-asr-kws\soundcard_api_dll\padynamic\src\patask.cpp(271): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
-d:\git\test-automation-asr-kws\soundcard_api_dll\padynamic\src\patask.cpp(278): warning C4244: 'argument': conversion from 'size_t' to 'double', possible loss of data
-d:\git\test-automation-asr-kws\soundcard_api_dll\padynamic\src\patask.cpp(461): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
-d:\git\test-automation-asr-kws\soundcard_api_dll\padynamic\src\patask.cpp(478): warning C4244: 'argument': conversion from 'size_t' to 'double', possible loss of data
-     Creating library D:\Git\Test-Automation-ASR-KWS\Soundcard_API_DLL\x64\Release\soundcard_api.lib and object D:\Git\Test-Automation-ASR-KWS\Soundcard_API_DLL\x64\Release\soundcard_api.exp
-  Generating code
-  1 of 53 functions ( 1.9%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    21 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
+﻿    正在创建库 D:\Git\Test-Automation-ASR-KWS\Soundcard_API_DLL\x64\Release\soundcard_api.lib 和对象 D:\Git\Test-Automation-ASR-KWS\Soundcard_API_DLL\x64\Release\soundcard_api.exp
+  正在生成代码
+  All 53 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  已完成代码的生成
   PaDynamic.vcxproj -> D:\Git\Test-Automation-ASR-KWS\Soundcard_API_DLL\x64\Release\soundcard_api.dll
-          1 file(s) copied.
+  已复制         1 个文件。

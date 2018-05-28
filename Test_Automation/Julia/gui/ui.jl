@@ -1,3 +1,26 @@
+
+function demo_radio()
+    w = Toplevel()
+    f = Frame(w)
+    pack(f, expand=true, fill="both")
+    
+    l  = Label(f, "Which do you prefer?")
+    rb = Radio(f, ["apples", "oranges"])
+    b  = Button(f, "ok")
+    map(u -> pack(u, anchor="w"), (l, rb, b))     ## pack in left to right
+    
+    
+    function callback(path)
+      msg = (get_value(rb) == "apples") ? "Good choice!  An apple a day keeps the doctor away!" :
+                                          "Good choice!  Oranges are full of Vitamin C!"
+      Messagebox(w, msg)
+    end
+    
+    bind(b, "command", callback)
+end
+
+
+
 function demo_wintab()
     w = Toplevel()
     tcl("pack", "propagate", w, false)
@@ -77,49 +100,60 @@ function ui_tk()
     # frames
     page1 = Frame(nb)
     page_add(page1, "Soundcard")
-    lf1 = Labelframe(page1, "Microphone/Input Mixing Matrix")
-    pack(lf1, expand=true, fill="both")
     
-    grid(Label(lf1,"Port [1] -->"),2,1)
-    grid(Label(lf1,"Port [2] -->"),3,1)
-    grid(Label(lf1,"Port [3] -->"),4,1)
-    grid(Label(lf1,"Port [4] -->"),5,1)
 
-    grid(Label(lf1,"Reference Mic-1"),1,2)
-    grid(Label(lf1,"Reference Mic-2"),1,3)
-    grid(Label(lf1,"Reference Mic-3"),1,4)
-
-    e_mmm = Array{Any}(4,3)
-    for i = 2:5, j = 2:4
-        e_mmm[i-1,j-1] = Entry(lf1)
-        grid(e_mmm[i-1,j-1],i,j)
-        set_value(e_mmm[i-1,j-1],"0.0")
+    lf3 = Labelframe(page1, "Soundcard Information")
+    pack(lf3, expand=true, fill="both", side="bottom")
+    snd_stat = Label(lf3, "[asio]: no device found")
+    grid(snd_stat,1,1,sticky="news")
+    if !isempty("SoundcardAPI.deviceCnt")
+        snd_stat[:text] = "returned values" 
     end
 
+
+
+    lf1 = Labelframe(page1, "Microphone/Input Mixing Matrix")
+    pack(lf1, expand=true, fill="both", side="left")
+
+    grid(Label(lf1,"PORT [1] ⇨"),3,1)
+    grid(Label(lf1,"PORT [2] ⇨"),4,1)
+    grid(Label(lf1,"PORT [3] ⇨"),5,1)
+    grid(Label(lf1,"PORT [4] ⇨"),6,1)
+
+    grid(Label(lf1,"[1]"),1,2)
+    grid(Label(lf1,"[2]"),1,3)
+    grid(Label(lf1,"[3]"),1,4)
+    grid(Label(lf1,"⇧"),2,2)
+    grid(Label(lf1,"⇧"),2,3)
+    grid(Label(lf1,"⇧"),2,4)
+
+    e_mmm = Array{Any}(14,13)
+    for i = 3:16, j = 2:14
+        e_mmm[i-2,j-1] = Entry(lf1, width=4)
+        grid(e_mmm[i-2,j-1],i,j, sticky="news")
+        set_value(e_mmm[i-2,j-1],"0.0")
+    end
+    
 
 
     lf2 = Labelframe(page1, "Loudspeaker/Output Mixing Matrix")
     pack(lf2, expand=true, fill="both")
 
-    grid(Label(lf2,"Port [1] <--"),2,1)
-    grid(Label(lf2,"Port [2] <--"),3,1)
-    grid(Label(lf2,"Port [3] <--"),4,1)
-    grid(Label(lf2,"Port [4] <--"),5,1)
+    grid(Label(lf2,"PORT [1] ⇽"),2,1)
+    grid(Label(lf2,"PORT [2] ⇽"),3,1)
+    grid(Label(lf2,"PORT [3] ⇽"),4,1)
+    grid(Label(lf2,"PORT [4] ⇽"),5,1)
 
-    grid(Label(lf2,"Mouth 0.5m"),1,2)
-    grid(Label(lf2,"Mouth 1.0m"),1,3)
-    grid(Label(lf2,"Mouth 3.0m"),1,4)
-    grid(Label(lf2,"Mouth 5.0m"),1,5)
+    grid(Label(lf2,"PLAY [1]"),1,2)
+    grid(Label(lf2,"PLAY [2]"),1,3)
+    grid(Label(lf2,"PLAY [3]"),1,4)
+    grid(Label(lf2,"PLAY [4]"),1,5)
 
     for i = 2:5, j = 2:5
         grid(Entry(lf2),i,j)
     end
 
-    snd_stat = Label(page1, "[asio]: no device found")
-    pack(snd_stat)
-    if !isempty("SoundcardAPI.deviceCnt")
-        snd_stat[:text] = "returned values" 
-    end
+
     
 
 
@@ -128,7 +162,7 @@ function ui_tk()
     page_add(page2, "Impulse Response")
     pack(Label(page2, "some labels"))
 
-    set_value(nb,2)
+    set_value(nb,1)
 
     # function callback(path)
     #     Messagebox(w, title="OK", message="good")
