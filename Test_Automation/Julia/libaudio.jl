@@ -725,7 +725,7 @@ function dB20uPa(calibration::Vector{T}, measurement::Matrix{T}, symbol::Vector{
     fl = 100, 
     fh = 12000, 
     calibrator_reading = 114.0,
-    verbose = true) where {T <: AbstractFloat}
+    verbose = true) where T <: AbstractFloat
 
     # calculate dbspl of all channels of x
     x = measurement
@@ -760,14 +760,14 @@ function dB20uPa(calibration::Vector{T}, measurement::Matrix{T}, symbol::Vector{
 end
 
 
-function dBSPL_single_symbol_multiple_instances(calibration_wavfile, measurement::Matrix{T}, symbol::Vector{T}, repeat::Int, samplerate; 
+function dBSPL_single_symbol_multiple_instances(calibration_wavfile, measurement::Matrix{Float64}, symbol::Vector{Float64}, repeat::Int, samplerate; 
     symbol_start=0.0,
     symbol_stop=0.0,
     fl = 100, 
     fh = 12000, 
     calibrator_reading = 114.0,
     p = Frame1(samplerate, 16384, div(16384,4), 0),
-    weighting = "none") where T <: AbstractFloat
+    weighting = "none")
 
 
     r, fs = wavread(calibration_wavfile)
@@ -793,7 +793,7 @@ function dBSPL_single_symbol_multiple_instances(calibration_wavfile, measurement
 end
 
 
-function dBSPL_multiple_symbols_single_instance(calibration_wavfile, measurement::Matrix{T}, symbol_fn, samplerate; 
+function dBSPL_multiple_symbols_single_instance(calibration_wavfile, measurement::Matrix{Float64}, symbol_fn, samplerate; 
     repeat = 1,
     symbol_start=0,
     symbol_stop=0,
@@ -801,7 +801,7 @@ function dBSPL_multiple_symbols_single_instance(calibration_wavfile, measurement
     fh = 12000, 
     calibrator_reading = 114.0,
     p = Frame1(samplerate, 16384, div(16384,4), 0),
-    weighting = "none") where T <: AbstractFloat
+    weighting = "none")
     
     
     # calibration 
@@ -836,7 +836,7 @@ function dBSPL_multiple_symbols_single_instance(calibration_wavfile, measurement
 end
 
 
-function symbolgroup()
+function symbolgroup()  # y::Matrix{Float64}
     
     hz = [71, 90, 112, 141, 179, 224, 280, 355, 450, 560, 710, 900, 1120, 1410, 1790, 2240, 2800, 3550, 4500]
     t = 3
@@ -1018,6 +1018,90 @@ function add_syncsymbol(signal::Matrix{Float64}, time_contextswitch, syncsymbol:
     y = [t_switch; t_symbol; t_decay; signal; t_symbol; t_decay]
 end
 
+
+
+
+
+
+function gauss_f(fx, F, Noct)
+    # % GAUSS_F calculate frequency-domain Gaussian with unity gain
+    # % 
+    # %   G = GAUSS_F(F_X,F,NOCT) calculates a frequency-domain Gaussian function
+    # %   for frequencies F_X, with centre frequency F and bandwidth F/NOCT.
+    
+    sigma = (F/Noct) / pi                          # standard deviation
+    g = exp.(-(((fx-F).^2) ./ (2.0*(sigma^2))))    # Gaussian
+    g = g ./ sum(g)                                # normalise magnitude    
+end
+    
+
+
+function smoothSpectrum(X::Vector{Float64}, f::Vector{Float64}, Noct)
+    # %SMOOTHSPECTRUM Apply 1/N-octave smoothing to a frequency spectrum
+    # % 
+    # %   X_OCT = IOSR.DSP.SMOOTHSPECTRUM(X,F,NOCT) applies 1/NOCT-octave
+    # %   smoothing to the frequency spectrum contained in vector X sampled at
+    # %   frequencies in vector F. X can be a log-, magnitude-, or
+    # %   power-spectrum. Setting Noct to 0 results in no smoothing.
+    # %   
+    # %   Algorithm
+    # %   
+    # %   The function calculates the i-th smoothed spectral coefficient X_OCT(i)
+    # %   as the sum of the windowed spectrum. The window is a Gaussian whose
+    # %   centre frequency is F(i), and whose standard deviation is proportional
+    # %   to F(i)/NOCT.
+    # % 
+    # %   Example
+    # % 
+    # %       % Calculate the 1/3-octave-smoothed power spectral density of the
+    # %       % Handel example.
+    # % 
+    # %       % load signal
+    # %       load handel.mat
+    # %       
+    # %       % take fft
+    # %       Y = fft(y);
+    # %       
+    # %       % keep only meaningful frequencies
+    # %       NFFT = length(y);
+    # %       if mod(NFFT,2)==0
+    # %           Nout = (NFFT/2)+1;
+    # %       else
+    # %           Nout = (NFFT+1)/2;
+    # %       end
+    # %       Y = Y(1:Nout);
+    # %       f = ((0:Nout-1)'./NFFT).*Fs;
+    # %       
+    # %       % put into dB
+    # %       Y = 20*log10(abs(Y)./NFFT);
+    # %       
+    # %       % smooth
+    # %       Noct = 3;
+    # %       Z = iosr.dsp.smoothSpectrum(Y,f,Noct);
+    # %       
+    # %       % plot
+    # %       figure
+    # %       semilogx(f,Y,f,Z)
+    # %       grid on
+    # % 
+    # %   Copyright 2016 University of Surrey.        
+    #     % calculates a Gaussian function for each frequency, deriving a
+    #     % bandwidth for that frequency
+    
+        x_oct = copy(X)                      # initial spectrum
+        if Noct > 0                          # don't bother if no smoothing
+            for i = find(u->u>0, f)[1]:length(f)
+                g = gauss_f(f, f[i], Noct)
+                x_oct[i] = sum(g.*X)
+            end
+            
+            # remove undershoot when X is positive
+            if all(X .>= 0)
+                x_oct[x_oct .< 0] = 0.0
+            end
+        end
+        x_oct
+    end
 
 
                                                 ##########################################
