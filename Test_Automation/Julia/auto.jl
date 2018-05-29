@@ -61,7 +61,7 @@ function auto(configure)
     digest = remotecall_fetch(Heartbeat.powreset, proc[:heartbeat], 6000)
     info(digest)
 
-    Turntable.rotate(rs232, 360-degree, direction="CW")
+    
     ####################
 
     rmprocs(workers())

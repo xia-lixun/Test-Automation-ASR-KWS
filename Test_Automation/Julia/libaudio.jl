@@ -49,10 +49,10 @@ function bilinear(b, a, fs)
     ar = convert(Array{BigFloat,1}, flipdim(a,1))
 
     for i = m:-1:0
-        p = p + (br[i+1] * (BigFloat(-2*fs)^i) * poly(convert(Array{BigFloat,1},ones(i))) * poly(convert(Array{BigFloat,1},-ones(n-i))))
+        p = p + (br[i+1] * (BigFloat(-2fs)^i) * poly(convert(Array{BigFloat,1},ones(i))) * poly(convert(Array{BigFloat,1},-ones(n-i))))
     end
     for i = n:-1:0
-        q = q + (ar[i+1] * (BigFloat(-2*fs)^i) * poly(convert(Array{BigFloat,1},ones(i))) * poly(convert(Array{BigFloat,1},-ones(n-i))))        
+        q = q + (ar[i+1] * (BigFloat(-2fs)^i) * poly(convert(Array{BigFloat,1},ones(i))) * poly(convert(Array{BigFloat,1},-ones(n-i))))        
     end
     
     num = zeros(Float64,n+1)
@@ -118,7 +118,7 @@ AWEIGHT_16kHz_BA = [0.531489829823557 -1.062979659647115 -0.531489829823556 2.12
                     
     
 
-function tf_filter(B, A, x)
+function tf_filter(B, A, x)  # -> Vector{Float64} or Matrix{Float64}
     # transfer function filter in z-domain
     #
     #   y(n)        b(1) + b(2)Z^(-1) + ... + b(M+1)Z^(-M)
@@ -210,7 +210,10 @@ end
 
 
 
-function tile(x::AbstractArray{T,1}, p::Frame1; zero_prepend=false, zero_append=false) where {T <: AbstractFloat}
+function tile(x::AbstractArray{T,1}, p::Frame1; 
+    zero_prepend=false, 
+    zero_append=false) where {T <: AbstractFloat}
+
     # extend array x with prefix/appending zeros for frame slicing
     # this is an utility function used by getframes(),spectrogram()...
     # new data are allocated, so origianl x is untouched.
@@ -235,7 +238,10 @@ end
 
 
 function getframes(x::AbstractArray{T,1}, p::Frame1; 
-    window=ones, zero_prepend=false, zero_append=false) where {T <: AbstractFloat}
+    window=ones, 
+    zero_prepend=false, 
+    zero_append=false) where {T <: AbstractFloat}
+    
     # function    : getframes
     # x           : array of AbstractFloat {Float64, Float32, Float16, BigFloat}
     # p           : frame size immutable struct
@@ -261,7 +267,11 @@ end
 
 
 function spectrogram(x::AbstractArray{T,1}, p::Frame1; 
-    nfft = p.block, window=ones, zero_prepend=false, zero_append=false) where {T <: AbstractFloat}
+    nfft = p.block, 
+    window=ones, 
+    zero_prepend=false, 
+    zero_append=false) where {T <: AbstractFloat}
+
     # example:
     # x = collect(1.0:100.0)
     # p = Frame1(8000, 17, 7.0, 0)
@@ -298,7 +308,8 @@ zero_crossing_rate(v) = floor.((abs.(diff(sign.(v)))) ./ 2)
 
 
 function short_term(f, x::AbstractArray{T,1}, p::Frame1; 
-    zero_prepend=false, zero_append=false) where {T <: AbstractFloat}
+    zero_prepend=false, 
+    zero_append=false) where {T <: AbstractFloat}
 
     frames, lu = getframes(x, p, zero_prepend=zero_prepend, zero_append=zero_append)
     n = size(frames,2)
@@ -318,7 +329,11 @@ mel_to_hz(mel) = 700 * (10 .^ (mel * 1.0 / 2595) - 1)
 
 
 function power_spectrum(x::AbstractArray{T,1}, p::Frame1; 
-    nfft = p.block, window=ones, zero_prepend=false, zero_append=false) where {T <: AbstractFloat}
+    nfft = p.block, 
+    window=ones, 
+    zero_prepend=false, 
+    zero_append=false) where {T <: AbstractFloat}
+
     # calculate power spectrum of 1-D array on a frame basis
     # note that T=Float16 may not be well supported by FFTW backend
 
@@ -381,7 +396,14 @@ end
 
 
 function filter_bank_energy(x::AbstractArray{T,1}, p::Frame1; 
-    nfft = p.block, window=ones, zero_prepend=false, zero_append=false, filt_num=26, fl=0, fh=div(p.rate,2), use_log=false) where {T <: AbstractFloat}
+    nfft = p.block, 
+    window=ones, 
+    zero_prepend=false, 
+    zero_append=false, 
+    filt_num=26, 
+    fl=0, 
+    fh=div(p.rate,2), 
+    use_log=false) where {T <: AbstractFloat}
 
     ℙ,h = power_spectrum(x, p, nfft=nfft, window=window, zero_prepend=zero_prepend, zero_append=zero_append)
     𝔽 = mel_filterbanks(T, p.rate, nfft, filt_num=filt_num, fl=fl, fh=fh)
@@ -477,12 +499,12 @@ end
 
 
 
-function stft2(𝕏::AbstractArray{Complex{T},2}, h::Int64, sz::Int64, hp::Int64, wn) where T <: AbstractFloat
+function stft2(𝕏::AbstractArray{Complex{T},2}, h::Int64, sz::Int64, hp::Int64, winfn) where T <: AbstractFloat
     # input:
     #    𝕏   complex spectrogram (DC to Nyquist)
     #    h   unpacked sample length of the signal in time domain
     # output time series reconstructed
-    𝕎 = wn(T,sz) ./ (T(sz/hp))
+    𝕎 = winfn(T,sz) ./ (T(sz/hp))
     𝕏 = vcat(𝕏, conj!(𝕏[end-1:-1:2,:]))
     𝕏 = real(ifft(𝕏,1)) .* 𝕎
 
@@ -537,94 +559,6 @@ end
 
 
 
-
-
-
-
-
-
-function extract_symbol_and_merge(x::AbstractArray{T,1}, s::AbstractArray{T,1}, rep::U;
-    vision=false) where {T <: AbstractFloat, U <: Integer}
-    
-    n = length(x) 
-    m = length(s)
-    y = zeros(T, rep * m)
-    peaks = zeros(Int64, rep)
-
-    ℝ = xcorr(s, x)
-    info("peak value: $(maximum(ℝ))")                              
-    vision && (box = plot(x, size=(800,200)))
-    
-    𝓡 = sort(ℝ[local_maxima(ℝ)], rev = true)
-    isempty(𝓡) && ( return (y, diff(peaks)) )
-
-
-    # find the anchor point
-    ploc = find(z->z==𝓡[1],ℝ)[1]
-    peaks[1] = ploc
-    info("peak anchor-[1] in correlation: $ploc")
-    lb = n - ploc + 1
-    rb = min(lb + m - 1, length(x))
-    y[1:1+rb-lb] = x[lb:rb]
-    ip = 1
-    1+rb-lb < m && warn("incomplete segment extracted!")
-
-    if vision
-        box_hi = maximum(x[lb:rb])
-        box_lo = minimum(x[lb:rb])
-        plotly()
-        plot!(box,[lb,rb],[box_hi, box_hi], color = "red", lw=1)
-        plot!(box,[lb,rb],[box_lo, box_lo], color = "red", lw=1)
-        plot!(box,[lb,lb],[box_hi, box_lo], color = "red", lw=1)
-        plot!(box,[rb,rb],[box_hi, box_lo], color = "red", lw=1)
-    end
-
-    if rep > 1
-        for i = 2:length(𝓡)
-            ploc = find(z->z==𝓡[i],ℝ)[1]
-            if sum(abs.(peaks[1:ip] - ploc) .> m) == ip
-                ip += 1
-                peaks[ip] = ploc
-                info("peak anchor-[$ip] in correlation: $ploc")
-                lb = n - ploc + 1
-                rb = min(lb + m - 1, length(x))
-                
-                if vision
-                    box_hi = maximum(x[lb:rb])
-                    box_lo = minimum(x[lb:rb])    
-                    plot!(box,[lb,rb],[box_hi, box_hi], color = "red", lw=1)
-                    plot!(box,[lb,rb],[box_lo, box_lo], color = "red", lw=1)
-                    plot!(box,[lb,lb],[box_hi, box_lo], color = "red", lw=1)
-                    plot!(box,[rb,rb],[box_hi, box_lo], color = "red", lw=1)
-                end
-
-                y[1+(ip-1)*m : 1+(ip-1)*m+(rb-lb)] = x[lb:rb]
-                1+rb-lb < m && warn("incomplete segment extracted!")
-                
-                if ip == rep
-                    break
-                end
-            end
-        end
-        peaks = sort(peaks)
-    end
-    vision && display(box)
-    (y, diff(peaks))
-end
-
-
-
-
-function signal_to_distortion_ratio(x::AbstractArray{T,1}, t::AbstractArray{T,1}) where T <: AbstractFloat
-
-    y,diffpeak = extract_symbol_and_merge(x, t, 1)
-    10log10.(sum(t.^2, 1) ./ sum((t-y).^2, 1))
-end
-
-
-
-
-
 function noise_estimate_invoke(p::Frame1, tau_be, c_inc_db, c_dec_db, noise_init_db, min_noise_db, 𝕏::AbstractArray{Complex{T},2}) where {T <: AbstractFloat}
 
     fs::Int64 = p.samplerate
@@ -649,6 +583,280 @@ function noise_estimate_invoke(p::Frame1, tau_be, c_inc_db, c_dec_db, noise_init
     end
     band_noise = band_noise[:,2:end]
 end
+
+
+
+function signal_to_distortion_ratio(x::AbstractArray{T,1}, t::AbstractArray{T,1}) where T <: AbstractFloat
+
+    lbs, pk, pkpf, y = extract_symbol_and_merge(x, t, 1)
+    10log10.(sum(t.^2, 1) ./ sum((t-y).^2, 1))
+end
+
+
+
+
+
+
+
+
+
+function extract_symbol_and_merge(x::AbstractArray{T,1}, s::AbstractArray{T,1}, rep::Int;
+    vision=false, 
+    verbose=false, 
+    dither=-120) where {T <: AbstractFloat}
+    
+
+    x = x + (rand(T,size(x)) - T(0.5)) * T(10^(dither/20))
+
+    n = length(x) 
+    m = length(s)
+    y = zeros(T, rep * m)
+    peaks = zeros(Int64, rep)
+    lbs = zeros(Int64, rep)
+    peakspf2 = zeros(rep)
+
+
+    ℝ = xcorr(s, x)
+    verbose && info("peak value: $(maximum(ℝ))")                              
+    vision && (box = plot(x, size=(800,200)))
+    
+    𝓡 = sort(ℝ[local_maxima(ℝ)], rev = true)
+    isempty(𝓡) && ( return (y, diff(peaks)) )
+
+
+    # find the anchor point
+    ploc = find(z->z==𝓡[1],ℝ)[1]
+    peaks[1] = ploc
+    lb = n - ploc + 1
+    rb = min(lb + m - 1, length(x))
+    y[1:1+rb-lb] = x[lb:rb]
+    ip = 1
+    lbs[ip] = lb
+    1+rb-lb < m && warn("incomplete segment extracted!")
+
+    pf2a, pf2b = parabolicfit2(ℝ[ploc-1:ploc+1])
+    peakspf2[ip] = (ploc-1) + (-0.5pf2b/pf2a)
+    verbose && info("peak anchor-[1] in correlation: $ploc, $(peakspf2[ip])")
+
+    if vision
+        box_hi = maximum(x[lb:rb])
+        box_lo = minimum(x[lb:rb])
+        plotly()
+        plot!(box,[lb,rb],[box_hi, box_hi], color = "red", lw=1)
+        plot!(box,[lb,rb],[box_lo, box_lo], color = "red", lw=1)
+        plot!(box,[lb,lb],[box_hi, box_lo], color = "red", lw=1)
+        plot!(box,[rb,rb],[box_hi, box_lo], color = "red", lw=1)
+    end
+
+    if rep > 1
+        for i = 2:length(𝓡)
+            ploc = find(z->z==𝓡[i],ℝ)[1]
+            if sum(abs.(peaks[1:ip] - ploc) .> m) == ip
+                ip += 1
+                peaks[ip] = ploc
+
+                pf2a, pf2b = parabolicfit2(ℝ[ploc-1:ploc+1])
+                peakspf2[ip] = (ploc-1) + (-0.5pf2b/pf2a)            
+                verbose && info("peak anchor-[$ip] in correlation: $ploc, $(peakspf2[ip])")
+
+                lb = n - ploc + 1
+                rb = min(lb + m - 1, length(x))
+                lbs[ip] = lb
+                
+                if vision
+                    box_hi = maximum(x[lb:rb])
+                    box_lo = minimum(x[lb:rb])    
+                    plot!(box,[lb,rb],[box_hi, box_hi], color = "red", lw=1)
+                    plot!(box,[lb,rb],[box_lo, box_lo], color = "red", lw=1)
+                    plot!(box,[lb,lb],[box_hi, box_lo], color = "red", lw=1)
+                    plot!(box,[rb,rb],[box_hi, box_lo], color = "red", lw=1)
+                end
+
+                y[1+(ip-1)*m : 1+(ip-1)*m+(rb-lb)] = x[lb:rb]
+                1+rb-lb < m && warn("incomplete segment extracted!")
+                
+                if ip == rep
+                    break
+                end
+            end
+        end
+        peaks = sort(peaks)
+        lbs = sort(lbs)
+        peakspf2 = sort(peakspf2)
+    end
+    vision && display(box)
+    return (lbs, peaks, peakspf2, y)
+end
+
+
+
+function parabolicfit2(y::AbstractArray{T,1}) where T <: AbstractFloat
+
+    # % given three points (x, y1) (x+1, y2) and (x+2, y3) there exists 
+    # % the only parabolic-2 fit y = ax^2+bx+c with a < 0. 
+    # % Therefore a global miximum can be found over the fit.
+    # %
+    # % To fit all thress points: let (x1 = 0, y1 = 0) then we have
+    # % other points (1, y2-y1) and (2, y3 - y1).
+    # %       0 = a * 0^2 + b * 0 + c => c = 0    (1)
+    # %       y2 - y1 = a + b                     (2)
+    # %       y3 - y1 = 4 * a + 2 * b             (3)
+    # %
+    # %       => a = y3/2 - y2 + y1/2             (4)
+    # %       => b = -y3/2 + 2*y2 - 3/2*y1        (5)
+    a = 0.5y[3] - y[2] + 0.5y[1]
+    b = -0.5y[3] + 2y[2] - 1.5y[1]
+    (a,b)
+end
+# % validation
+# % y = [0.5; 1.0; 0.8];
+# % [a,b] = parabolic_fit_2(y);
+# % figure; plot([0;1;2], y-y(1), '+'); hold on; grid on;
+# % m = -0.5*b/a;
+# % ym = a * m^2 + b * m;
+# % plot(m, ym, 's');
+# % x = -1:0.001:5;
+# % plot(x,a*x.^2+b*x, '--');
+
+
+
+
+function dB20uPa(calibration::Vector{T}, measurement::Matrix{T}, symbol::Vector{T}, repeat::Int, symbol_l, symbol_h, p::Frame1; 
+    fl = 100, 
+    fh = 12000, 
+    calibrator_reading = 114.0,
+    verbose = true) where {T <: AbstractFloat}
+
+    # calculate dbspl of all channels of x
+    x = measurement
+    s = symbol
+    channels = size(x,2)
+    dbspl = zeros(eltype(x), channels)
+    
+
+    rp = power_spectrum(calibration, p, p.block, window=hann)
+    rp = mean(rp, 2)
+
+    fl = floor(Int64, fl/p.rate * p.block)
+    fh = floor(Int64, fh/p.rate * p.block)
+    offset = 10*log10(sum_kbn(rp[fl:fh]) + eps())
+
+    # to use whole symbol, set symbol_l >= symbol_h
+    if symbol_l < symbol_h
+        assert(size(s,1) >= floor(Int64, p.rate * symbol_h))
+        s = s[1 + floor(Int64, p.rate * symbol_l) : floor(Int64, p.rate * symbol_h)]        
+    end
+
+    for c = 1:channels
+        lbs, pk, pkpf, xp = extract_symbol_and_merge(x[:,c], s, repeat)
+        verbose && info("lb locations: $(lbs./p.rate) seconds, @sample $lbs")
+        xp = power_spectrum(xp, p, p.block, window=hann)
+        xp = mean(xp, 2)
+                
+        dbspl[c] = 10*log10(sum_kbn(xp[fl:fh])) + (calibrator_reading - offset)
+        verbose && info("channel $c: SPL = $(dbspl[c]) dB")           
+    end
+    dbspl
+end
+
+
+function dBSPL_single_symbol_multiple_instances(calibration_wavfile, measurement::Matrix{T}, symbol::Vector{T}, repeat::Int, samplerate; 
+    symbol_start=0.0,
+    symbol_stop=0.0,
+    fl = 100, 
+    fh = 12000, 
+    calibrator_reading = 114.0,
+    p = Frame1(samplerate, 16384, div(16384,4), 0),
+    weighting = "none") where T <: AbstractFloat
+
+
+    r, fs = wavread(calibration_wavfile)
+    assert(Int64(fs) == p.rate)
+    x = measurement
+    s = symbol
+
+    if lowercase(weighting) == "a"
+        info("A-wighting")
+        b,a = weighting_a(p.rate)
+        # r = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], r)
+        # x = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], x)
+        # s = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], s)
+        r = tf_filter(b,a,r)
+        x = tf_filter(b,a,x)
+        s = tf_filter(b,a,s)
+    end
+
+    dbspl = dB20uPa(r[:,1], x, s, repeat, symbol_start, symbol_stop, p,
+        fl = fl,
+        fh = fh,
+        calibrator_reading = calibrator_reading)    
+end
+
+
+function dBSPL_multiple_symbols_single_instance(calibration_wavfile, measurement::Matrix{T}, symbol_fn, samplerate; 
+    repeat = 1,
+    symbol_start=0,
+    symbol_stop=0,
+    fl = 100, 
+    fh = 12000, 
+    calibrator_reading = 114.0,
+    p = Frame1(samplerate, 16384, div(16384,4), 0),
+    weighting = "none") where T <: AbstractFloat
+    
+    
+    # calibration 
+    r, fs = wavread(calibration_wavfile)
+    assert(Int64(fs) == p.rate)
+    x = measurement
+    s, fs = symbol_fn()
+    assert(Int64(fs) == p.rate)
+
+    
+    if lowercase(weighting) == "a"
+        info("A-wighting")
+        b,a = weighting_a(p.rate)
+        # r = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], r)
+        # x = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], x)
+        # s = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], s)
+        r = tf_filter(b,a,r)
+        x = tf_filter(b,a,x)
+        s = tf_filter(b,a,s)
+    end
+
+    
+    y = zeros(size(x,2), size(s,2))
+    for i = 1:size(s,2)
+        dbspl = dB20uPa(r[:,1], x, s[:,i], repeat, symbol_start, symbol_stop, p,
+            fl = fl,
+            fh = fh,
+            calibrator_reading = calibrator_reading)
+        y[:,i] = dbspl
+    end
+    y
+end
+
+
+function symbolgroup()
+    
+    hz = [71, 90, 112, 141, 179, 224, 280, 355, 450, 560, 710, 900, 1120, 1410, 1790, 2240, 2800, 3550, 4500]
+    t = 3
+    fs = 48000
+      
+    m = Int64(floor(t*fs))
+    n = length(hz)
+    y = ones(m, n)
+    for i = 1:n
+        y[:,i] = sin.(2*π*hz[i]/fs*(0:m-1))
+    end
+    (y, fs)    
+end
+
+
+
+
+
+
+
 
 
 
@@ -742,6 +950,73 @@ end
 
 
 
+
+function syncsymbol(f0, f1, elapse, fs)  # -> Matrix{Float64}
+
+    # % sync symbol is the guard symbol for asynchronous recording/playback
+    # % 'asynchronous' means playback and recording may happen at different 
+    # % devices: for example, to measure mix distortion we play stimulus from
+    # % fireface and do mic recording at the DUT (with only file IO in most 
+    # % cases).
+    # %
+    # % we apply one guard symbol at both beginning and the end of the
+    # % session. visualized as:
+    # %
+    # % +-------+--------------------+-------+
+    # % | guard | actual test signal | guard |
+    # % +-------+--------------------+-------+
+    # %
+    # % NOTE:
+    # % The guard symbol shall contain not only the chirp but also a
+    # % sufficiently long pre and post silence. post silence is for the chirp
+    # % energy to decay, not to disturb the measurement; pre silence is to
+    # % prepare enough time for DUT audio framework context switching 
+    # % (products may have buggy glitches when change from system sound to
+    # % music). Our chirp signal is designed to have zero start and zero end
+    # % so it is safe to (pre/a)ppend zeros (no discontinuity issue).
+    # % 
+    # % 
+    # % typical paramters could be:
+    # %   f0 = 1000
+    # %   f1 = 1250
+    # %   elapse = 2.5
+    # %   fs = 48000
+    x1 = expsinesweep(f0, f1, elapse, fs)
+    x2 = -flipdim(x1,1)
+    y = [x1; x2[2:end]]
+end
+
+
+
+function add_syncsymbol(signal::Matrix{Float64}, time_contextswitch, syncsymbol::Matrix{Float64}, time_symboldecay, fs) # -> Matrix{Float64}
+    # % this function encode the content of the stimulus for playback if sync
+    # % (guard) symbols are needed for asynchronous operations.
+    # %
+    # % +----------+------+-------+--------------------+------+-------+
+    # % | t_switch | sync | decay |   test   signal    | sync | decay |
+    # % +----------+------+-------+--------------------+------+-------+
+    # % t_switch is time for DUT context switch
+    # % decay is inserted to separate dynamics of sync and the test signal
+    # %
+    # % for example:
+    # %     signal = [randn(8192,1); zeros(65536,1)];
+    # %     g = sync_symbol(1000, 1250, 1, 48000) * (10^(-3/20));
+    # %     y = add_sync_symbol(signal, 3, g, 2, 48000);
+    # %
+    # % we now have a stimulus of pre-silence of 3 seconds, guard chirp of
+    # % length 1 second, chirp decaying marging of 2 seconds, a measurement
+    # % of random noise.
+    n_ch = size(signal, 2)
+    tmp, ch_active = findmax(sum(signal.^2,1))
+    # only add the sync symbol to the highest-energy channel
+    
+    t_switch = zeros(round(Int64, time_contextswitch * fs), n_ch)
+    t_symbol = zeros(size(syncsymbol,1), n_ch)
+    t_symbol[:,ch_active] = syncsymbol[:,1]
+    t_decay = zeros(round(Int64, time_symboldecay * fs), n_ch)
+    
+    y = [t_switch; t_symbol; t_decay; signal; t_symbol; t_decay]
+end
 
 
 

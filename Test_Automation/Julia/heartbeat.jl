@@ -60,7 +60,7 @@ module Heartbeat
     end
 
 
-    function lux_isalive()
+    function luxisalive()
         x = chomp(readstring(`sdb root off`))
         x = chomp(readstring(`sdb root on`))
         x == "Switched to 'root' account mode" && (return true)

@@ -1,7 +1,10 @@
+module Turntable
+
 using SerialPorts
 
 
-module Turntable
+    device() = list_serialports()
+    
 
     function set_origin(id; baudrate = 19200)
         s = SerialPort(id, baudrate)
