@@ -33,7 +33,8 @@ module SoundcardAPI
     end
 
 
-    function play_record(dat::Matrix{Float32}, ch::Int64, fs::Int64)    # -> Matrix{Float32}
+    # ch = size(mixmic,1)
+    function playrecord(dat::Matrix{Float32}, ch::Int64, fs::Int64)    # -> Matrix{Float32}
         pcmo = to_interleave(dat)
         pcmi = zeros(Float32, size(dat)[1] * ch)
         ccall((:playrecord, "soundcard_api"), Int32, (Ptr{Float32}, Int64, Ptr{Float32}, Int64, Int64, Int64), pcmo, size(dat)[2], pcmi, ch, size(dat)[1], fs)
@@ -59,4 +60,21 @@ module SoundcardAPI
         return y
     end
 
+
+
+
+
+
+    ## highlevel api: only expose these to users
+    function playrecord(playing::Matrix{T}, mixspk::Matrix{T}, mixmic::Matrix{T}, fs) where T <: AbstractFloat
+        recording = T.(mixer(playrecord(mixer(Float32.(playing), Float32.(mixspk)), size(mixmic,1), Int64(fs)), Float32.(mixmic)))
+    end
+    
+    function play(playing::Matrix{T}, mixspk::Matrix{T}, fs) where T <: AbstractFloat
+        play(mixer(Float32.(playing), Float32.(mixspk)), Int64(fs))
+    end
+
+    function record(samples, mixmic::Matrix{T}, fs) where T <: AbstractFloat
+        recording = T.(mixer(record((Int64(samples),size(mixmic,1)), Int64(fs)), Float32.(mixmic)))
+    end
 end

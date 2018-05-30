@@ -86,5 +86,12 @@ using WAV
         end
         wavwrite(x.', wavfile, Fs=fs, nbits=16)
     end
+
+
+    function mixer(x::Matrix{T}, mix::Matrix{T}) where T <: AbstractFloat    # -> Matrix{Float32}
+        y = x * mix
+        maximum(abs.(y)) >= one(T) && error("mixer: sample clipping!")
+        return y
+    end
         
 end

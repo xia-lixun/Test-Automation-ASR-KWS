@@ -118,7 +118,7 @@ AWEIGHT_16kHz_BA = [0.531489829823557 -1.062979659647115 -0.531489829823556 2.12
                     
     
 
-function tf_filter(B, A, x)  # -> Vector{Float64} or Matrix{Float64}
+function tf_filter(B::Vector{Float64}, A::Vector{Float64}, x)  # -> Vector{Float64} or Matrix{Float64}
     # transfer function filter in z-domain
     #
     #   y(n)        b(1) + b(2)Z^(-1) + ... + b(M+1)Z^(-M)
@@ -128,6 +128,7 @@ function tf_filter(B, A, x)  # -> Vector{Float64} or Matrix{Float64}
     #   y(n)a(1) = x(n)b(1) + b(2)x(n-1) + ... + b(M+1)x(n-M)
     #              - a(2)y(n-1) - a(3)y(n-2) - ... - a(N+1)y(n-N)
     #
+
     if A[1] != 1.0
         B = B / A[1]
         A = A / A[1]
@@ -140,13 +141,21 @@ function tf_filter(B, A, x)  # -> Vector{Float64} or Matrix{Float64}
 
     y = zeros(size(x))
     x = [zeros(M,L); x]
-    s = zeros(N,L)
+    s = zeros(N, L)
 
-    for j = 1:L
-        for i = M+1:size(x,1)
-            y[i-M,j] = dot(Br, x[i-M:i,j]) - dot(As, s[:,j])
-            s[2:end,j] = s[1:end-1,j]
-            s[1,j] = y[i-M,j] 
+    if N != 0 #ARMA
+        for j = 1:L
+            for i = M+1:size(x,1)
+                y[i-M,j] = dot(Br, x[i-M:i,j]) - dot(As, s[:,j])
+                s[2:end,j] = s[1:end-1,j]
+                s[1,j] = y[i-M,j] 
+            end
+        end
+    else #MA
+        for j = 1:L
+            for i = M+1:size(x,1)
+                y[i-M,j] = dot(Br, x[i-M:i,j])
+            end
         end
     end
     y
@@ -601,9 +610,9 @@ end
 
 
 function extract_symbol_and_merge(x::AbstractArray{T,1}, s::AbstractArray{T,1}, rep::Int;
-    vision=false, 
-    verbose=false, 
-    dither=-120) where {T <: AbstractFloat}
+    vision = true, 
+    verbose = true, 
+    dither = -120) where {T <: AbstractFloat}
     
 
     x = x + (rand(T,size(x)) - T(0.5)) * T(10^(dither/20))
