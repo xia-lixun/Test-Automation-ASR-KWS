@@ -1,9 +1,12 @@
 module Validate
 
+
+
 using WAV
 include("device.jl")
 include("soundcard_api.jl")
 include("libaudio.jl")
+
 
 
     function soundcard_api()
@@ -19,6 +22,22 @@ include("libaudio.jl")
 
 
 
+    function impulse_response_open()
+        # preparation of workers
+        for i in workers()
+            i != 1 && rmprocs(i)      
+        end
+        addprocs(1)
+        wpid = workers()
+        remotecall_fetch(include, wpid[1], "device.jl")
+        remotecall_fetch(include, wpid[1], "soundcard_api.jl")        
+    end
+
+    function impulse_response_close()
+        for i in workers()
+            i != 1 && rmprocs(i)      
+        end
+    end
     # const sndcard_n_out = 8
     # const sndcard_n_in = 8
     # const mic_n = 1
@@ -38,6 +57,10 @@ include("libaudio.jl")
         syncatten = -18,
         mode = (:asio, :asio))
 
+
+        # parallel environment
+        assert(nprocs() > 1)
+        wpid = workers()
 
         # frequency range limitation
         assert(f0 < f1)
@@ -68,18 +91,39 @@ include("libaudio.jl")
             if all(x->x==:fileio, mode)
 
                 playback = "dutplayback.wav"
-                capture = "dutcapture.wav"
                 wavwrite(Device.mixer(essdfa, mixspk), playback, Fs=fs, nbits=32)
 
-                Device.luxplayrecord(playback, size(essdfa,1)/fs, ["mic_8ch_16k_s16_le"])
-                Device.luxplayrecord(["mic_8ch_16k_s16_le"])
+                capture = ["mic_8ch_16k_s16_le"]
+                Device.luxplayrecord(playback, size(essdfa,1)/fs, capture)
+                Device.luxplayrecord(capture)
 
-                Device.raw2wav_16bit("mic_8ch_16k_s16_le.raw", size(mixmic,1), 16000, "mic_8ch_16k_s16_le.wav")
-                run(`sox mic_8ch_16k_s16_le.wav -r $(fs) mic_8ch_48k_s16_le.wav`)
+                Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
+                run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
                 r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)
 
             elseif mode[1] == :asio && mode[2] == :fileio
+
+                capture = ["mic_8ch_16k_s16_le"]
+                Device.luxrecord(size(essdfa,1)/fs, capture)
+
+                playdone = remotecall(SoundcardAPI.play, wpid[1], essdfa, mixspk, fs)
+                Device.luxrecord(capture)
+                fetch(playdone)
+
+                Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
+                run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
+                r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)                
+
             elseif mode[1] == :fileio && mode[2] == :asio
+
+                playback = "dutplayback.wav"
+                wavwrite(Device.mixer(essdfa, mixspk), playback, Fs=fs, nbits=32)
+                Device.luxplay(playback)
+
+                playdone = remotecall(Device.play, wpid[1])
+                r = SoundcardAPI.record(size(essdfa,1), mixmic, fs)
+                fetch(playdone)
+
             else
                 error("please choose valid mode: (:asio, :asio)|(:fileio, :fileio)|(:asio, :fileio)|(:fileio, :asio)")
             end
