@@ -1188,7 +1188,20 @@ using SHA
         
         
         
-        
+    
+    function resample_vhq!(in::Vector{Float32}, fs_in::Float64, out::Vector{Float32}, fs_out::Float64)
+        outlen_act = zeros(UInt64,1)
+        soxerr = ccall((:soxr_oneshot, "libsoxr"),
+                        Ptr{Int8},
+                        (Float64, Float64, UInt32, Ptr{Float32}, UInt64, Ptr{UInt64}, Ptr{Float32}, UInt64, Ptr{UInt64}, Ptr{Void}, Ptr{Void}, Ptr{Void}), 
+                        fs_in, fs_out, 1, 
+                        in, length(in), C_NULL, 
+                        out, length(out), outlen_act, 
+                        C_NULL, C_NULL, C_NULL)
+        assert(Int64(soxerr) == 0)
+        Int64(outlen_act)
+    end
+
     # resample entire folder to another while maintain folder structure
     # 1. need ffmpeg installed as backend
     # 2. need sox install as resample engine
