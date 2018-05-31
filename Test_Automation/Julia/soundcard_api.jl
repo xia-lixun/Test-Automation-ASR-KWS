@@ -54,9 +54,9 @@ module SoundcardAPI
     end
 
     
-    function mixer(x::Matrix{Float32}, mix::Matrix{Float32})    # -> Matrix{Float32}
+    function mixer(x::Matrix{T}, mix::Matrix{T}) where T <: AbstractFloat   # -> Matrix{T}
         y = x * mix
-        maximum(abs.(y)) >= 1.0f0 && error("mixer: sample clipping!")
+        maximum(abs.(y)) >= one(T) && error("mixer: sample clipping!")
         return y
     end
 
@@ -64,8 +64,10 @@ module SoundcardAPI
 
 
 
+                                        ## --------------------------
+                                        ##    API for ease of use
+                                        ## --------------------------
 
-    ## highlevel api: only expose these to users
     function playrecord(playing::Matrix{T}, mixspk::Matrix{T}, mixmic::Matrix{T}, fs) where T <: AbstractFloat
         recording = T.(mixer(playrecord(mixer(Float32.(playing), Float32.(mixspk)), size(mixmic,1), Int64(fs)), Float32.(mixmic)))
     end
@@ -77,4 +79,39 @@ module SoundcardAPI
     function record(samples, mixmic::Matrix{T}, fs) where T <: AbstractFloat
         recording = T.(mixer(record((Int64(samples),size(mixmic,1)), Int64(fs)), Float32.(mixmic)))
     end
+
+
+
+                                        ## --------------------------
+                                        ##  API for ultralow latency
+                                        ## --------------------------
+
+    #dat = SoundcardAPI.mixer(Float32.(playing), Float32.(mixspk))
+    #pcm = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
+    play(size_dat::Tuple{Int64,Int64}, pcm::SharedArray{Float32,1}, fs) = 
+        ccall((:play, "soundcard_api"), Int32, (Ptr{Float32}, Int64, Int64, Int64), pcm, size_dat[2], size_dat[1], fs)  # remotecall
+    # async tasks
+    # fetch(done)
+    
+
+    # pcm = SharedArray{Float32,1}(zeros(Float32, size(mixmic,1) * samples))
+    record(pcm::SharedArray{Float32,1}, size_mixmic::Tuple{Int64,Int64}, samples, fs) =
+        ccall((:record, "soundcard_api"), Int32, (Ptr{Float32}, Int64, Int64, Int64), pcm, size_mixmic[1], samples, fs)  # remotecall
+    # async tasks...
+    # fetch(done)
+    # recording = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcm, size(mixmic,1), samples))), Float32.(mixmic)))
+
+
+    # dat = SoundcardAPI.mixer(Float32.(playing), Float32.(mixspk))
+    # pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
+    # pcmi = SharedArray{Float32,1}(zeros(Float32, size(mixmic,1) * size(dat)[1]))
+    playrecord(size_dat::Tuple{Int64,Int64}, pcmo::SharedArray{Float32,1}, pcmi::SharedArray{Float32,1}, size_mixmic::Tuple{Int64,Int64}, fs) =
+        ccall((:playrecord, "soundcard_api"), Int32, (Ptr{Float32}, Int64, Ptr{Float32}, Int64, Int64, Int64), pcmo, size_dat[2], pcmi, size_mixmic[1], size_dat[1], fs)
+    # async tasks
+    # fetch(done)
+    # recording = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(mixmic,1), size(dat)[1]))), Float32.(mixmic)))
+
+
+
+
 end

@@ -611,7 +611,7 @@ using SHA
 
     function extract_symbol_and_merge(x::AbstractArray{T,1}, s::AbstractArray{T,1}, rep::Int;
         vision = true, 
-        verbose = true, 
+        verbose = false, 
         dither = -120) where {T <: AbstractFloat}
         
 
@@ -650,7 +650,7 @@ using SHA
         if vision
             box_hi = maximum(x[lb:rb])
             box_lo = minimum(x[lb:rb])
-            plotly()
+            
             plot!(box,[lb,rb],[box_hi, box_hi], color = "red", lw=1)
             plot!(box,[lb,rb],[box_lo, box_lo], color = "red", lw=1)
             plot!(box,[lb,lb],[box_hi, box_lo], color = "red", lw=1)
