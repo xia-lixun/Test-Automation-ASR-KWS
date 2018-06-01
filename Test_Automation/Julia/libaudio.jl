@@ -769,7 +769,9 @@ using SHA
     end
 
 
-    function dBSPL_single_symbol_multiple_instances(calibration_wavfile, measurement::Matrix{Float64}, symbol::Vector{Float64}, repeat::Int, samplerate; 
+    # to measure single simple symbol: symbol_start = 0.0, symbol_stop = 0.0
+    # to measure multiple simple symbols: concatenate them into one symbol, and use symbol_start and symbol_stop as labelings for each iteration
+    function spl(calibration_wavfile, measurement::Matrix{Float64}, symbol::Vector{Float64}, repeat::Int, samplerate; 
         symbol_start=0.0,
         symbol_stop=0.0,
         fl = 100, 
@@ -802,63 +804,8 @@ using SHA
     end
 
 
-    function dBSPL_multiple_symbols_single_instance(calibration_wavfile, measurement::Matrix{Float64}, symbol_fn, samplerate; 
-        repeat = 1,
-        symbol_start=0,
-        symbol_stop=0,
-        fl = 100, 
-        fh = 12000, 
-        calibrator_reading = 114.0,
-        p = Frame1(samplerate, 16384, div(16384,4), 0),
-        weighting = "none")
-        
-        
-        # calibration 
-        r, fs = wavread(calibration_wavfile)
-        assert(Int64(fs) == p.rate)
-        x = measurement
-        s, fs = symbol_fn()
-        assert(Int64(fs) == p.rate)
-
-        
-        if lowercase(weighting) == "a"
-            info("A-wighting")
-            b,a = weighting_a(p.rate)
-            # r = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], r)
-            # x = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], x)
-            # s = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], s)
-            r = tf_filter(b,a,r)
-            x = tf_filter(b,a,x)
-            s = tf_filter(b,a,s)
-        end
-
-        
-        y = zeros(size(x,2), size(s,2))
-        for i = 1:size(s,2)
-            dbspl = dB20uPa(r[:,1], x, s[:,i], repeat, symbol_start, symbol_stop, p,
-                fl = fl,
-                fh = fh,
-                calibrator_reading = calibrator_reading)
-            y[:,i] = dbspl
-        end
-        y
-    end
 
 
-    function symbolgroup()  # y::Matrix{Float64}
-        
-        hz = [71, 90, 112, 141, 179, 224, 280, 355, 450, 560, 710, 900, 1120, 1410, 1790, 2240, 2800, 3550, 4500]
-        t = 3
-        fs = 48000
-        
-        m = Int64(floor(t*fs))
-        n = length(hz)
-        y = ones(m, n)
-        for i = 1:n
-            y[:,i] = sin.(2*π*hz[i]/fs*(0:m-1))
-        end
-        (y, fs)    
-    end
 
 
 

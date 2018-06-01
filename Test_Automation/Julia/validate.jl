@@ -174,5 +174,18 @@ end
 
 
 
+function levelcalibrate_updateref(mixmic::Matrix{Float64}, seconds, fs, folderpath;
+    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    
+    r = SoundcardAPI.record(round(Int64, seconds * fs), mixmic, fs)
+    t = replace(string(now()), [':','.'], '-')
+    name = hwinfo[:calibrator] * "_" * hwinfo[:db] * "_" * hwinfo[:dba] * "_" * hwinfo[:mic] * "_" * hwinfo[:preamp] * "_" * hwinfo[:gain] * "_" * hwinfo[:soundcard]
+    wavwrite(r, joinpath(folderpath, t * "_" * name * ".wav"), Fs=fs, nbits=32)
+end
 
-
+function levelcalibrate_dba(symbol, symbol_gain_init, mixspk, mixmic, fs, dba_target, barometer_correction;
+    mode = :asio,
+    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    
+    
+end
