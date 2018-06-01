@@ -101,9 +101,11 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             Device.luxplayrecord(capture)
 
             Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
-            run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
-            r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)
+            raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
+            r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
 
+            #run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
+            #r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)
 
         elseif mode[1] == :asio && mode[2] == :fileio
 
@@ -122,9 +124,11 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
 
             # post processing
             Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
-            run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
-            r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)                
+            raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
+            r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
 
+            # run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
+            # r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)                
 
         elseif mode[1] == :fileio && mode[2] == :asio
 
@@ -140,6 +144,7 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
         else
             error("please choose valid mode: (:asio, :asio)|(:fileio, :fileio)|(:asio, :fileio)|(:fileio, :asio)")
         end
+
 
         # decode async signal
         nmic = size(mixmic,2)

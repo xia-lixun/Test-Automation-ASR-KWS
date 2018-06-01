@@ -1189,17 +1189,32 @@ using SHA
         
         
     
-    function resample_vhq!(in::Vector{Float32}, fs_in::Float64, out::Vector{Float32}, fs_out::Float64)
-        outlen_act = zeros(UInt64,1)
+    function resample_vhq(input::Vector{T}, fs_in, fs_out) where T <: AbstractFloat
+
+        block = Float32.(input)
+        thsps = ceil(Int64, length(block) * (fs_out/fs_in))
+        resampled = zeros(Float32, thsps)
+        len_resampled = zeros(UInt64,1)
+
         soxerr = ccall((:soxr_oneshot, "libsoxr"),
                         Ptr{Int8},
                         (Float64, Float64, UInt32, Ptr{Float32}, UInt64, Ptr{UInt64}, Ptr{Float32}, UInt64, Ptr{UInt64}, Ptr{Void}, Ptr{Void}, Ptr{Void}), 
-                        fs_in, fs_out, 1, 
-                        in, length(in), C_NULL, 
-                        out, length(out), outlen_act, 
+                        Float64.(fs_in), Float64.(fs_out), 1, 
+                        block, length(block), C_NULL, 
+                        resampled, length(resampled), len_resampled, 
                         C_NULL, C_NULL, C_NULL)
         assert(Int64(soxerr) == 0)
-        Int64(outlen_act)
+        info("resample: theory/actual = $thsps/$(Int64(len_resampled[1])) samples")
+        return T.(resampled)
+    end
+
+    function resample_vhq(input::Matrix{T}, fs_in, fs_out) where T <: AbstractFloat
+
+        resampled = zeros(T, ceil(Int64, size(input,1) * (fs_out/fs_in)), size(input,2))
+        for i = 1:size(input,2)
+            resampled[:,i] = resample_vhq(input[:,i], fs_in, fs_out)
+        end
+        return resampled
     end
 
     # resample entire folder to another while maintain folder structure
