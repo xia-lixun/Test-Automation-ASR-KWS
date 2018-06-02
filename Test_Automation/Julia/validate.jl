@@ -25,7 +25,7 @@ end
 
 
 
-function impulse_response_open()
+function session_open()
     # preparation of workers
     for i in workers()
         i != 1 && rmprocs(i)      
@@ -36,11 +36,15 @@ function impulse_response_open()
     remotecall_fetch(include, wpid[1], "soundcard_api.jl")        
 end
 
-function impulse_response_close()
+function session_close()
     for i in workers()
         i != 1 && rmprocs(i)      
     end
 end
+
+
+
+
 # const sndcard_n_out = 8
 # const sndcard_n_in = 8
 # const mic_n = 1
@@ -180,6 +184,11 @@ end
 
 
 
+
+
+
+
+
 hwinfo2string(hw::Dict{Symbol,String}) = hw[:calibrator] * "_" * hw[:db] * "_" * hw[:dba] * "_" * hw[:mic] * "_" * hw[:preamp] * "_" * hw[:gain] * "_" * hw[:soundcard]
 
 # example:
@@ -196,11 +205,12 @@ function levelcalibrate_updateref(mixmic::Matrix{Float64}, seconds, fs, folderpa
     nothing
 end
 
+
 # note: time diff in millseconds, use Dates.Millisecond(24*3600*1000) for conditions
 function levelcalibrate_retrievelatest(folderpath;
     hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
 
-    select = ""
+    fileloc = ""
     timespan = Vector{DateTime}([now(), now()])
     archive = [(DateTime(String(split(basename(i),"+")[1]), DateFormat("y-m-dTH-M-S-s")), i) for i in LibAudio.list(folderpath, t=".wav")]
     sort!(archive, by=x->x[1], rev=true)
@@ -208,25 +218,90 @@ function levelcalibrate_retrievelatest(folderpath;
     for i in archive
         if String(split(basename(i[2]),"+")[2]) == hwinfo2string(hwinfo) * ".wav"
             timespan[1] = i[1]
-            select = i[2]
+            fileloc = i[2]
             break
         end
     end
-    select, diff(timespan)
+    fileloc, diff(timespan)
 end
 
 
 
-function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, barometer_correction;
+# note: symbol is the segment of signal for level measurement
+# note: repeat if for multiple trial --- t_context + (symbol + decay) x repeat
+# note: folderpath is the path for reference mic recordings of the calibrators (piston and piezo etc...)
+function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
+    barometer_correction = 0.0,
     mode = :asio,
     t_context = 5.0,
     t_decay = 2.0,
-    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
-    g = symbol_gain_init
+
+    # parallel environment
+    assert(nprocs() > 1)
+    wpid = workers()
     assert(size(mixspk, 1) == 1)
     assert(size(mixmic, 2) == 1)
 
-    symbold = [(10^(g/20))*symbol; zeros(round(Int64, t_decay*fs), size(symbol,2))]
-    y = [zeros(round(Int64, t_context*fs), size(symbol,2)); repmat(symbold,repeat,1)]
+
+    function recording_with_gain(g)
+        m = length(symbol)
+        n = round(Int64, t_decay*fs)
+        
+        symbold = zeros(m+n,1)
+        symbold[1:m,1] = symbol * 10^(g/20)
+        symboldt = [zeros(round(Int64, t_context*fs), 1); repmat(symbold,repeat,1)]
+    
+        if mode == :asio
+            r = SoundcardAPI.playrecord(symboldt, mixspk, mixmic, fs)
+    
+        elseif mode == :fileio
+            # prepare the device
+            Device.luxinit()
+            playback = "dutplayback.wav"
+            wavwrite(Device.mixer(symboldt, mixspk), playback, Fs=fs, nbits=32)
+            Device.luxplay(playback)
+    
+            playdone = remotecall(Device.luxplay, wpid[1])
+            r = SoundcardAPI.record(size(symboldt,1), mixmic, fs)
+            fetch(playdone)
+        else
+            error("mode must be either :asio or :fileio")
+        end
+        return r
+    end
+
+
+    # load the latest calibrator recordings: 42AA and 42AB
+    fileloc_piston, millidelta_piston = levelcalibrate_retrievelatest(folderpath, hwinfo=piston)
+    fileloc_piezo, millidelta_piezo = levelcalibrate_retrievelatest(folderpath, hwinfo=piezo)
+    info("use latest calibration files:")
+    info(fileloc_piston)
+    info(fileloc_piezo)
+    assert(millidelta_piston <= Dates.Millisecond(Dates.Day(1)))
+    assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(1)))
+
+    # do recording
+    y = recording_with_gain(symbol_gain_init) 
+
+    # dbspl of piston and piezo would give similar results: for example < 0.5dB
+    dbspl_piston = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
+    dbspl_piezo = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piezo[:db]))
+    if abs(dbspl_piston[1] - dbspl_piezo[1]) > 0.5
+        error("calibration deviation > 0.5 dB(A), please re-calibrate! Abort")
+    else
+        info("calibration deviation: $(abs(dbspl_piston[1] - dbspl_piezo[1]))")
+    end
+
+    # if cross validation ok, use piston(42AA) for dBA measurement
+    dba_piston = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
+    symbol_gain = symbol_gain_init + (dba_target - dba_piston[1])
+    
+    # apply the delta and remeasure
+    y = recording_with_gain(symbol_gain) 
+    dba_piston = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
+
+    return symbol_gain, dba_piston[1]
 end
