@@ -48,6 +48,13 @@ end
 # mixplay[1,2] = 1.0f0
 # mixrec = zeros(Float32, sndcard_n_in, mic_n)
 # mixrec[2,1] = 1.0f0
+#
+# note: adjust atten for the level of the ess signal
+# note: adjust syncatten for the level of the sync symbol, if too high mixer would prompt with mic clipping error!
+# note: use long t_ess when possible, for the build-up of the stimulus energy
+# note: use long t_decay if room or system dunamics are reverberant
+# note: [b,a] is prepending transfer function for filter verification
+# note: mode[1] is the physical device for playback, mode[2] is the physical device for recording
 function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     fs = 48000,
     f0 = 22, 
@@ -173,19 +180,53 @@ end
 
 
 
+hwinfo2string(hw::Dict{Symbol,String}) = hw[:calibrator] * "_" * hw[:db] * "_" * hw[:dba] * "_" * hw[:mic] * "_" * hw[:preamp] * "_" * hw[:gain] * "_" * hw[:soundcard]
 
+# example:
+#   mixmic = zeros(8,1)
+#   micmic[2,1] = 1.0
+#   hwspec = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX")
+#   levelcalibrate_updateref(mixmic, 60.0, 48000, "D:\\AATT\\Data\\Calib\\Level", hwinfo=hwspec)
 function levelcalibrate_updateref(mixmic::Matrix{Float64}, seconds, fs, folderpath;
     hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
     r = SoundcardAPI.record(round(Int64, seconds * fs), mixmic, fs)
     t = replace(string(now()), [':','.'], '-')
-    name = hwinfo[:calibrator] * "_" * hwinfo[:db] * "_" * hwinfo[:dba] * "_" * hwinfo[:mic] * "_" * hwinfo[:preamp] * "_" * hwinfo[:gain] * "_" * hwinfo[:soundcard]
-    wavwrite(r, joinpath(folderpath, t * "_" * name * ".wav"), Fs=fs, nbits=32)
+    wavwrite(r, joinpath(folderpath, t * "+" * hwinfo2string(hwinfo) * ".wav"), Fs=fs, nbits=32)
+    nothing
 end
 
-function levelcalibrate_dba(symbol, symbol_gain_init, mixspk, mixmic, fs, dba_target, barometer_correction;
+# note: time diff in millseconds, use Dates.Millisecond(24*3600*1000) for conditions
+function levelcalibrate_retrievelatest(folderpath;
+    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+
+    select = ""
+    timespan = Vector{DateTime}([now(), now()])
+    archive = [(DateTime(String(split(basename(i),"+")[1]), DateFormat("y-m-dTH-M-S-s")), i) for i in LibAudio.list(folderpath, t=".wav")]
+    sort!(archive, by=x->x[1], rev=true)
+    
+    for i in archive
+        if String(split(basename(i[2]),"+")[2]) == hwinfo2string(hwinfo) * ".wav"
+            timespan[1] = i[1]
+            select = i[2]
+            break
+        end
+    end
+    select, diff(timespan)
+end
+
+
+
+function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, barometer_correction;
     mode = :asio,
+    t_context = 5.0,
+    t_decay = 2.0,
     hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
-    
+    g = symbol_gain_init
+    assert(size(mixspk, 1) == 1)
+    assert(size(mixmic, 2) == 1)
+
+    symbold = [(10^(g/20))*symbol; zeros(round(Int64, t_decay*fs), size(symbol,2))]
+    y = [zeros(round(Int64, t_context*fs), size(symbol,2)); repmat(symbold,repeat,1)]
 end

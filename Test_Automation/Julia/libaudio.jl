@@ -7,13 +7,13 @@ using Plots
 using WAV
 using SHA
 
-
-                                                ##########################################
-                                                ##                                      ##
-                                                ##      Chapter I. Data Processing      ##
-                                                ##                                      ##
-                                                ##########################################
-
+    #
+    #                                           ------------------------------------------
+    #                                           --                                      --
+    #                                           --      Chapter I. Data Processing      --
+    #                                           --                                      --
+    #                                           ------------------------------------------
+    #
     function bilinear(b, a, fs)
         # bilinear transformation of transfer function from s-domain to z-domain
         # via s = 2/T (z-1)/(z+1)
@@ -1060,12 +1060,12 @@ using SHA
         end
 
 
-                                                    ##########################################
-                                                    ##                                      ##
-                                                    ##       Chapter II. File System        ##
-                                                    ##                                      ##
-                                                    ##########################################
-
+    #                                               ------------------------------------------                                                    
+    #                                               --                                      --
+    #                                               --       Chapter II. File System        --
+    #                                               --                                      --
+    #                                               ------------------------------------------
+    #
     # Deprecated! -> randstring()
     # function rand_alphanum(n::Int64)
     #     an = collect("0123456789_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
