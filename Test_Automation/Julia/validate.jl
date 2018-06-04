@@ -1,5 +1,7 @@
 
 using WAV
+include("turntable.jl")
+include("heartbeat.jl")
 include("device.jl")
 include("soundcard_api.jl")
 include("libaudio.jl")
@@ -9,37 +11,33 @@ include("libaudio.jl")
 
 
 
-function soundcard_api()
-    fs = 48000
-    data = SoundcardAPI.record((3fs,8), fs)
-    wavwrite(data, "record.wav", Fs=fs, nbits=32)
-
-    SoundcardAPI.play(data, fs)
-
-    loopback = SoundcardAPI.playrecord(data, 8, fs)
-    wavwrite(loopback, "loopback.wav", Fs=fs, nbits=32)
-end
 
 
 
 
 
 
-function session_open()
+function session_open(n)
     # preparation of workers
     for i in workers()
         i != 1 && rmprocs(i)      
     end
-    addprocs(1)
-    wpid = workers()
-    remotecall_fetch(include, wpid[1], "device.jl")
-    remotecall_fetch(include, wpid[1], "soundcard_api.jl")        
+    addprocs(n)
+    for wpid in workers()
+        remotecall_fetch(include, wpid, "turntable.jl")
+        remotecall_fetch(include, wpid, "heartbeat.jl")
+        remotecall_fetch(include, wpid, "device.jl")
+        remotecall_fetch(include, wpid, "soundcard_api.jl")        
+    end
+    nothing
 end
+
 
 function session_close()
     for i in workers()
         i != 1 && rmprocs(i)      
     end
+    nothing
 end
 
 
@@ -233,10 +231,10 @@ end
 function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
     barometer_correction = 0.0,
     mode = :asio,
-    t_context = 5.0,
+    t_context = 3.0,
     t_decay = 2.0,
-    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
-    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
 
     # parallel environment
@@ -314,11 +312,11 @@ end
 function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
     barometer_correction = 0.0,
     mode = :asio,
-    t_context = 5.0,
+    t_context = 3.0,
     t_decay = 2.0,
-    gain_sync = -20,
-    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
-    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    gain_sync = -12,
+    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
 
     # parallel environment

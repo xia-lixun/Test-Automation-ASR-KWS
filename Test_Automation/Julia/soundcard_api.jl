@@ -19,6 +19,9 @@ module SoundcardAPI
     end
 
 
+
+
+
     function record(dim::Tuple{Int64, Int64}, fs::Int64)    # -> Matrix{Float32}
         pcm = zeros(Float32, dim[2] * dim[1])
         ccall((:record, "soundcard_api"), Int32, (Ptr{Float32}, Int64, Int64, Int64), pcm, dim[2], dim[1], fs)
@@ -113,5 +116,15 @@ module SoundcardAPI
 
 
 
+# function soundcard_api()
+#     fs = 48000
+#     data = SoundcardAPI.record((3fs,8), fs)
+#     wavwrite(data, "record.wav", Fs=fs, nbits=32)
+
+#     SoundcardAPI.play(data, fs)
+
+#     loopback = SoundcardAPI.playrecord(data, 8, fs)
+#     wavwrite(loopback, "loopback.wav", Fs=fs, nbits=32)
+# end
 
 end
