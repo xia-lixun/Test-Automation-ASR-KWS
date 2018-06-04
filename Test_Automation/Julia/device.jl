@@ -90,10 +90,14 @@ using WAV
     end
 
 
-    function mixer(x::Matrix{T}, mix::Matrix{T}) where T <: AbstractFloat    # -> Matrix{Float32}
+    # note: x must be dimensionally raised to matrix!
+    function mixer(x::Matrix{T}, mix::Matrix{T}) where T <: AbstractFloat
         y = x * mix
-        maximum(abs.(y)) >= one(T) && error("mixer: sample clipping!")
+        maximum(abs.(y)) >= one(T) && error("device mixer: sample clipping!")
         return y
     end
-        
+
+    
+
+
 end

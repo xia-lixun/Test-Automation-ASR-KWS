@@ -67,7 +67,7 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     t_decay = 3,
     b = [1.0],
     a = [1.0],
-    atten = -20,
+    atten = -6,
     syncatten = -18,
     mode = (:asio, :asio))
 
@@ -82,24 +82,33 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     f1 > fs/2 && (f1 = fs/2)
 
     # generate ess
-    ess = LibAudio.expsinesweep(f0, f1, t_ess, fs)
-    m = size(ess,1)
+    ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
+    m = length(ess)
     n = round(Int64, t_decay * fs)
     essd = zeros(m+n, 1)
-    essd[1:m,:] = ess
+    essd[1:m, 1] = ess
 
     # eq filter and attenuate, we do not do clipping check as it is duty of the mixer
     essdf = 10^(atten/20) * LibAudio.tf_filter(b, a, essd)
 
 
     if all(x->x==:asio, mode)
-        mics = SoundcardAPI.playrecord(essdf, mixspk, mixmic, fs)
+
+        mic = SoundcardAPI.playrecord(essdf, mixspk, mixmic, fs)
     
+    elseif all(x->x==:simulation, mode)
+
+        ellip_b = [0.165069005881145, 0.064728220211450, 0.237771476924023, 0.237771476924022, 0.064728220211450, 0.165069005881146]
+        ellip_a = [1.0, -1.544070855644442, 2.377072040756431, -1.638501402700271, 0.950992608325718, -0.210354984704200]
+        mic = LibAudio.tf_filter(ellip_b, ellip_a, essdf)
+        ym = median(abs.(mic))
+        mic[mic.>ym] = ym
+
     else
         sync = 10^(syncatten/20) * LibAudio.syncsymbol(220, 8000, 1, fs)
         contextswitch = 5
         syncdecay = 3
-        essdfa = LibAudio.add_syncsymbol(essdf, contextswitch, sync, syncdecay, fs)
+        essdfa = LibAudio.syncsymbol_encode(essdf, contextswitch, sync, syncdecay, fs)
         Device.luxinit()
 
         if all(x->x==:fileio, mode)
@@ -153,33 +162,24 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             fetch(playdone)
 
         else
-            error("please choose valid mode: (:asio, :asio)|(:fileio, :fileio)|(:asio, :fileio)|(:fileio, :asio)")
+            error("mode: (:asio,:asio) | (:asio,:fileio) | (:fileio,:asio) | (:fileio,:fileio) | (:simulation,:simulation)")
         end
 
 
         # decode async signal
-        nmic = size(mixmic,2)
-        symloc = zeros(Int64,2,nmic)
-        for i = 1:nmic
-            lbs,pks,pksf,y = LibAudio.extract_symbol_and_merge(r[:,i], sync[:,1], 2)
-            symloc[:,i] = lbs
-        end
-        delta_measure = symloc[2,:] - symloc[1,:]
-        delta_theory = size(sync,1) + round(Int64, syncdecay * fs) + size(essdf,1)
-        relat = symloc[1,:] - minimum(symloc[1,:])
-        info(delta_measure)
-        info(delta_theory)
-        info(relat)
+        p = size(essdf,1)
+        c = size(r,2)
+        symloc = LibAudio.syncsymbol_decode(r, p, sync, syncdecay, fs)
 
-        mics = zeros(size(essdf,1), nmic)
         hyperthetical_tolerance = 2048
-        for i = 1:nmic
+        mic = zeros(p, c)
+        for i = 1:c
             loc = symloc[1,i] + size(sync,1) + round(Int64, syncdecay * fs) - hyperthetical_tolerance
-            mics[:,i] = r[loc:loc+size(essdf,1)-1, i]
+            mic[:,i] = r[loc:loc+p-1, i]
         end
     end
 
-    fund, harm, dirac, total = LibAudio.impresp(ess, n, f0, f1, fs, mics)
+    fund, harm, dirac, total = LibAudio.impresp(ess, n, f0, f1, fs, mic)
 end 
 
 
@@ -222,7 +222,7 @@ function levelcalibrate_retrievelatest(folderpath;
             break
         end
     end
-    fileloc, diff(timespan)
+    fileloc, diff(timespan)[1]
 end
 
 
@@ -288,7 +288,7 @@ function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_in
 
     # dbspl of piston and piezo would give similar results: for example < 0.5dB
     dbspl_piston = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
-    dbspl_piezo = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piezo[:db]))
+    dbspl_piezo = LibAudio.spl(fileloc_piezo, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piezo[:db]))
     if abs(dbspl_piston[1] - dbspl_piezo[1]) > 0.5
         error("calibration deviation > 0.5 dB(A), please re-calibrate! Abort")
     else
@@ -307,12 +307,16 @@ function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_in
 end
 
 
+
+
+
 # note: source is multichannel sound tracks for spl measurement, it is based on async method, therefore no need for parameter repeat
 function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
     barometer_correction = 0.0,
     mode = :asio,
     t_context = 5.0,
     t_decay = 2.0,
+    gain_sync = -20,
     piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
     piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
@@ -326,7 +330,7 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     function recording_with_gain(g)
       
         syncsym = LibAudio.syncsymbol(220,8000,1,fs)
-        source_async = LibAudio.add_syncsymbol(source * 10^(g/20), t_context, syncsym, t_decay, fs)
+        source_async = LibAudio.syncsymbol_encode(source * 10^(g/20), t_context, 10^(gain_sync/20)*syncsym, t_decay, fs)
 
         if mode == :asio
             r = SoundcardAPI.playrecord(source_async, mixspk, mixmic, fs)
@@ -358,12 +362,14 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(1)))
 
     # do recording
-    y_async, sync = recording_with_gain(source_gain_init) 
-    y = LibAudio.rm_syncsymbol(y_async, sync, t_decay, fs)
+    ya, syn = recording_with_gain(source_gain_init) 
+    loc = LibAudio.syncsymbol_decode(ya, size(source,1), syn, t_decay, fs)
+    lb = loc[1,1] + length(syn) + round(Int64, t_decay * fs)
+    rb = loc[2,1] - 1
 
     # dbspl of piston and piezo would give similar results: for example < 0.5dB
-    dbspl_piston = LibAudio.spl(fileloc_piston, y, y[:,1], 1, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
-    dbspl_piezo = LibAudio.spl(fileloc_piston, y, y[:,1], 1, fs, calibrator_reading=parse(Float64,piezo[:db]))
+    dbspl_piston = LibAudio.spl(fileloc_piston, ya[lb:rb,:], ya[lb:rb,1], 1, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
+    dbspl_piezo = LibAudio.spl(fileloc_piezo, ya[lb:rb,:], ya[lb:rb,1], 1, fs, calibrator_reading=parse(Float64,piezo[:db]))
     if abs(dbspl_piston[1] - dbspl_piezo[1]) > 0.5
         error("calibration deviation > 0.5 dB(A), please re-calibrate! Abort")
     else
@@ -371,12 +377,15 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     end
 
     # if cross validation ok, use piston(42AA) for dBA measurement
-    dba_piston = LibAudio.spl(fileloc_piston, y, y[:,1], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
+    dba_piston = LibAudio.spl(fileloc_piston, ya[lb:rb,:], ya[lb:rb,1], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
     source_gain = source_gain_init + (dba_target - dba_piston[1])
     
     # apply the delta and remeasure
-    y = recording_with_gain(source_gain) 
-    dba_piston = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
+    ya, syn = recording_with_gain(source_gain) 
+    loc = LibAudio.syncsymbol_decode(ya, size(source,1), syn, t_decay, fs)
+    lb = loc[1,1] + length(syn) + round(Int64, t_decay * fs)
+    rb = loc[2,1] - 1
+    dba_piston = LibAudio.spl(fileloc_piston, ya[lb:rb,:], ya[lb:rb,1], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
 
-    return symbol_gain, dba_piston[1]
+    return source_gain, dba_piston[1]
 end

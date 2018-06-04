@@ -55,8 +55,8 @@ using SHA
             q = q + (ar[i+1] * (BigFloat(-2fs)^i) * poly(convert(Array{BigFloat,1},ones(i))) * poly(convert(Array{BigFloat,1},-ones(n-i))))        
         end
         
-        num = zeros(Float64,n+1)
-        den = zeros(Float64,n+1)
+        num = zeros(n+1)
+        den = zeros(n+1)
         for i = 0:n
             num[i+1] = Float64(p[i])        
         end
@@ -69,7 +69,7 @@ using SHA
 
 
 
-    function convolve(a::Array{T,1}, b::Array{T,1}) where T <: Real
+    function convolve(a::AbstractArray{T,1}, b::AbstractArray{T,1}) where T <: Real
         m = size(a,1)
         n = size(b,1)
         l = m+n-1
@@ -118,7 +118,9 @@ using SHA
                         
         
 
-    function tf_filter(B::Vector{Float64}, A::Vector{Float64}, x)  # -> Vector{Float64} or Matrix{Float64}
+    # note: x is either ::Vector{T} or ::Matrix{T}
+    #       return is of the same dimension as x
+    function tf_filter(B::Array{T,1}, A::Array{T,1}, x) where T <: AbstractFloat  
         # transfer function filter in z-domain
         #
         #   y(n)        b(1) + b(2)Z^(-1) + ... + b(M+1)Z^(-M)
@@ -140,7 +142,7 @@ using SHA
         L = size(x,2)
 
         y = zeros(size(x))
-        x = [zeros(M,L); x]
+        x = [zeros(M, L); x]
         s = zeros(N, L)
 
         if N != 0 #ARMA
@@ -743,23 +745,23 @@ using SHA
         dbspl = zeros(eltype(x), channels)
         
 
-        rp = power_spectrum(calibration, p, p.block, window=hann)
+        rp,rpn = power_spectrum(calibration, p, window=hann)
         rp = mean(rp, 2)
 
-        fl = floor(Int64, fl/p.rate * p.block)
-        fh = floor(Int64, fh/p.rate * p.block)
+        fl = floor(Int64, fl/p.samplerate * p.block)
+        fh = floor(Int64, fh/p.samplerate * p.block)
         offset = 10*log10(sum_kbn(rp[fl:fh]) + eps())
 
         # to use whole symbol, set symbol_l >= symbol_h
         if symbol_l < symbol_h
-            assert(size(s,1) >= floor(Int64, p.rate * symbol_h))
-            s = s[1 + floor(Int64, p.rate * symbol_l) : floor(Int64, p.rate * symbol_h)]        
+            assert(size(s,1) >= floor(Int64, p.samplerate * symbol_h))
+            s = s[1 + floor(Int64, p.samplerate * symbol_l) : floor(Int64, p.rate * symbol_h)]        
         end
 
         for c = 1:channels
             lbs, pk, pkpf, xp = extract_symbol_and_merge(x[:,c], s, repeat)
-            verbose && info("lb locations: $(lbs./p.rate) seconds, @sample $lbs")
-            xp = power_spectrum(xp, p, p.block, window=hann)
+            verbose && info("lb locations: $(lbs./p.samplerate) seconds, @sample $lbs")
+            xp,xpn = power_spectrum(xp, p, window=hann)
             xp = mean(xp, 2)
                     
             dbspl[c] = 10*log10(sum_kbn(xp[fl:fh])) + (calibrator_reading - offset)
@@ -782,13 +784,13 @@ using SHA
 
 
         r, fs = wavread(calibration_wavfile)
-        assert(Int64(fs) == p.rate)
+        assert(Int64(fs) == p.samplerate)
         x = measurement
         s = symbol
 
         if lowercase(weighting) == "a"
             info("A-wighting")
-            b,a = weighting_a(p.rate)
+            b,a = weighting_a(p.samplerate)
             # r = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], r)
             # x = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], x)
             # s = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], s)
@@ -819,95 +821,97 @@ using SHA
 
 
 
-    function accusum(x, sigma, err)
-        icompensated = x - err
-        sumconverge = sigma + icompensated
-        err = (sumconverge - sigma) - icompensated
-        sigma = sumconverge
-        sigma, err
+    function accumulate_khan(x, Σ, δ)
+        y = x - δ
+        σ = Σ + y
+        δ = (σ - Σ) - y
+        Σ = σ
+        Σ, δ
     end
 
 
-    function expsinesweep(f_start, f_stop, time, fs)    # -> Matrix{Float64}
 
-        const sps = convert(Int64, round(time * fs))
-        mul = (f_stop / f_start) ^ (1 / sps)
-        delta = 2pi * f_start / fs
-        play = zeros(sps,1)
+    function sinesweep_exp(f0, f1, t, fs)
+
+        n = round(Int64, t * fs)
+        m = (f1 / f0) ^ (1 / n)
+        Δ = 2pi * f0 / fs
+        y = zeros(n)
 
         #calculate the phase increment gain
         #closed form --- [i.play[pauseSps] .. i.play[pauseSps + chirpSps - 1]]
         
-        accuerr = 0.0
-        phi = 0.0
-        for k = 1:sps
-            play[k] = phi
-            phi, accuerr = accusum(delta, phi, accuerr)
-            delta = delta * mul
+        ϵ = 0.0
+        ϕ = 0.0
+        for k = 1:n
+            y[k] = ϕ
+            ϕ, ϵ = accumulate_khan(Δ, ϕ, ϵ)
+            Δ = Δ * m
         end
         
         #the exp sine sweeping time could be non-integer revolutions of 2 * pi for phase phi.
         #Thus we find the remaining and cut them evenly from each sweeping samples as a constant bias.
-        delta = -mod(play[sps], 2pi)
-        delta = delta / (sps - 1);
-        accuerr = 0.0
-        phi = 0.0
-        for k = 1:sps
-            play[k] = sin(play[k] + phi);
-            phi,accuerr = accusum(delta, phi, accuerr);
+        Δ = -mod(y[n], 2pi)
+        Δ = Δ / (n - 1)
+        ϵ = 0.0
+        ϕ = 0.0
+        for k = 1:n
+            y[k] = sin(y[k] + ϕ)
+            ϕ, ϵ = accumulate_khan(Δ, ϕ, ϵ)
         end
-        return play
+        y
     end
 
 
-    function iexpsinesweep(ess::Matrix{Float64}, f_start, f_stop)    # -> Matrix{Float64}
+    function sinesweep_expinv(signal, f0, f1) 
 
-        n = length(ess)
-        slope = 20log10(0.5)
-        atten = slope * log2(f_stop/f_start) / (n-1)
+        n = length(signal)
+        atten = 20log10(0.5) * log2(f1/f0) / (n-1)
         gain = 0
-        iess = flipdim(ess,1)
+        y = flipdim(signal, 1)
         for i = 1:n
-            iess[i] *= 10^(gain/20+1)
+            y[i] *= 10^(gain/20+1)
             gain += atten
         end
-        return iess
+        return y
     end
 
 
 
+    # signal: sinesweep_exp signal w/o decay
+    # decay: number of zero samples appending to signal
+    function impresp(signal::Vector{Float64}, decay::Int, f0, f1, fs, recording::Matrix{Float64})
 
-    function impresp(ess::Matrix{Float64}, ndecay::Int64, f_start, f_stop, fs, mics::Matrix{Float64})    # -> (Matrix{Float64}, Matrix{Float64}, Matrix{Float64})
-
-        iess = iexpsinesweep(ess, f_start, f_stop)
-        m = length(ess)
-        period = m+ndecay
-        l,nmic = size(mics)
+        kernel = sinesweep_expinv(signal, f0, f1)
+        m = length(signal)
+        period = m + decay
+        l, nmic = size(recording)
         assert(l == period)
 
-        ffn(x,y) = fft([x;zeros(eltype(x), y-size(x,1), size(x,2))],1)
-        iffn(x,y) = ifft([x;zeros(eltype(x), y-size(x,1), size(x,2))],1)
+        # raise dim to 2
+        ffn(x,n) = fft([x; zeros(eltype(x), n-size(x,1), size(x,2))], 1)
+        iffn(x,n) = ifft([x; zeros(eltype(x), n-size(x,1), size(x,2))], 1)
 
         nfft = nextpow2(m+period-1)
-        iessfft = ffn(iess, nfft)
-        dirac = real(iffn(ffn(ess, nfft) .* iessfft, nfft))/nfft
-        measure = real(iffn(ffn(mics, nfft) .* iessfft, nfft))/nfft
+        kernelf = ffn(kernel, nfft)
 
+        dirac = real(iffn(ffn(signal, nfft) .* kernelf, nfft))/nfft
+        measure = real(iffn(ffn(recording, nfft) .* kernelf, nfft))/nfft
 
-        disoff = (m/fs) / log(f_stop/f_start)
-        dist12 = Int64(round(log(2) * disoff * fs))
-        #fundamental = zeros(nfft-(m-div(dist12,2)-1), nmic)
-        #harmonic = zeros(m-div(dist12,2), nmic)
-        fundamental = measure[m-div(dist12,2):end,:]
-        harmonic = measure[1:m-div(dist12,2),:]
+        offset = (m/fs) / log(f1/f0)
+        d12 = round(Int64, log(2) * offset * fs)
+        #fundamental = zeros(nfft-(m-div(d12,2)-1), nmic)
+        #harmonic = zeros(m-div(d12,2), nmic)
+        fund = measure[m-div(d12,2):end, :]
+        harm = measure[1:m-div(d12,2), :]
         
-        return (fundamental, harmonic, dirac, measure)
+        fund, harm, dirac, measure
     end
 
 
 
 
-    function syncsymbol(f0, f1, elapse, fs)  # -> Matrix{Float64}
+    function syncsymbol(f0, f1, t, fs)
 
         # % sync symbol is the guard symbol for asynchronous recording/playback
         # % 'asynchronous' means playback and recording may happen at different 
@@ -937,14 +941,15 @@ using SHA
         # %   f1 = 1250
         # %   elapse = 2.5
         # %   fs = 48000
-        x1 = expsinesweep(f0, f1, elapse, fs)
+        x1 = sinesweep_exp(f0, f1, t, fs)
         x2 = -flipdim(x1,1)
         y = [x1; x2[2:end]]
     end
 
 
-
-    function add_syncsymbol(signal::Matrix{Float64}, time_contextswitch, syncsymbol::Matrix{Float64}, time_symboldecay, fs) # -> Matrix{Float64}
+    # signal is either ::Vector{Float64} or ::Matrix{Float64}
+    # the result will be dimensionally raised up to matrix
+    function syncsymbol_encode(signal, t_context, syncsymbol::Vector{Float64}, t_symboldecay, fs) # -> Matrix{Float64}
         # % this function encode the content of the stimulus for playback if sync
         # % (guard) symbols are needed for asynchronous operations.
         # %
@@ -962,28 +967,41 @@ using SHA
         # % we now have a stimulus of pre-silence of 3 seconds, guard chirp of
         # % length 1 second, chirp decaying marging of 2 seconds, a measurement
         # % of random noise.
-        n_ch = size(signal, 2)
-        tmp, ch_active = findmax(sum(signal.^2,1))
+        ch = size(signal, 2)
+        tmp, active = findmax(sum(signal.^2,1))
         # only add the sync symbol to the highest-energy channel
         
-        t_switch = zeros(round(Int64, time_contextswitch * fs), n_ch)
-        t_symbol = zeros(size(syncsymbol,1), n_ch)
-        t_symbol[:,ch_active] = syncsymbol[:,1]
-        t_decay = zeros(round(Int64, time_symboldecay * fs), n_ch)
+        t_switch = zeros(round(Int64, t_context * fs), ch)
+        t_symbol = zeros(size(syncsymbol,1), ch)
+        t_symbol[:, active] = syncsymbol
+        t_decay = zeros(round(Int64, t_symboldecay * fs), ch)
         
         y = [t_switch; t_symbol; t_decay; signal; t_symbol; t_decay]
     end
 
 
-    function rm_syncsymbol(encoded::Matrix{Float64}, syncsymbol::Matrix{Float64}, time_symboldecay, fs)
 
-        lbs,pks,pksf,mgd = extract_symbol_and_merge(view(encoded,:,1), view(syncsymbol,:,1), 2)
-        info(diff(pks)[1])
-        info(diff(pksf)[1])
-        info(size(syncsymbol,1) + round(time_symboldecay * fs) + size(encoded,1))
-        lb = lbs[1] + size(syncsymbol,1) + round(time_symboldecay * fs)
-        rb = lbs[2] - 1
-        encoded[lb:rb,:]
+    function syncsymbol_decode(encoded::Matrix{Float64}, decode_len::Int, syncsymbol::Vector{Float64}, t_symboldecay, fs)
+
+        n = size(encoded,2)
+        location = zeros(Int64,2,n)
+        for i = 1:n
+            lbs, pks, pksf, mgd = LibAudio.extract_symbol_and_merge(encoded[:,i], syncsymbol, 2)
+            info(diff(pks)[1])
+            info(diff(pksf)[1])
+            location[:,i] = lbs
+        end
+
+        delta_measure = location[2,:] - location[1,:]
+        delta_theory = length(syncsymbol) + round(Int64, t_symboldecay * fs) + decode_len
+        relat = location[1,:] - minimum(location[1,:])
+        info(delta_measure)
+        info(delta_theory)
+        info(relat)
+
+        #lb = lbs[1] + size(syncsymbol,1) + round(Int64, t_symboldecay * fs)
+        #rb = lbs[2] - 1
+        location
     end
 
 
@@ -1054,21 +1072,23 @@ using SHA
         #     % calculates a Gaussian function for each frequency, deriving a
         #     % bandwidth for that frequency
         
-            x_oct = copy(X)                      # initial spectrum
-            if Noct > 0                          # don't bother if no smoothing
-                for i = find(u->u>0, f)[1]:length(f)
-                    g = gauss_f(f, f[i], Noct)
-                    x_oct[i] = sum(g.*X)
-                end
-                
-                # remove undershoot when X is positive
-                if all(X .>= 0)
-                    x_oct[x_oct .< 0] = 0.0
-                end
+        x_oct = copy(X)                      # initial spectrum
+        if Noct > 0                          # don't bother if no smoothing
+            for i = find(u->u>0, f)[1]:length(f)
+                g = gauss_f(f, f[i], Noct)
+                x_oct[i] = sum(g.*X)
             end
-            x_oct
+            
+            # remove undershoot when X is positive
+            if all(X .>= 0)
+                x_oct[x_oct .< 0] = 0.0
+            end
         end
+        x_oct
+    end
 
+
+    
 
     #                                               ------------------------------------------                                                    
     #                                               --                                      --
