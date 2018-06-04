@@ -305,3 +305,78 @@ function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_in
 
     return symbol_gain, dba_piston[1]
 end
+
+
+# note: source is multichannel sound tracks for spl measurement, it is based on async method, therefore no need for parameter repeat
+function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
+    barometer_correction = 0.0,
+    mode = :asio,
+    t_context = 5.0,
+    t_decay = 2.0,
+    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    
+
+    # parallel environment
+    assert(nprocs() > 1)
+    wpid = workers()
+    assert(size(mixmic, 2) == 1)
+
+
+    function recording_with_gain(g)
+      
+        syncsym = LibAudio.syncsymbol(220,8000,1,fs)
+        source_async = LibAudio.add_syncsymbol(source * 10^(g/20), t_context, syncsym, t_decay, fs)
+
+        if mode == :asio
+            r = SoundcardAPI.playrecord(source_async, mixspk, mixmic, fs)
+    
+        elseif mode == :fileio
+            # prepare the device
+            Device.luxinit()
+            playback = "dutplayback.wav"
+            wavwrite(Device.mixer(source_async, mixspk), playback, Fs=fs, nbits=32)
+            Device.luxplay(playback)
+    
+            playdone = remotecall(Device.luxplay, wpid[1])
+            r = SoundcardAPI.record(size(source_async,1), mixmic, fs)
+            fetch(playdone)
+        else
+            error("mode must be either :asio or :fileio")
+        end
+        return r, syncsym
+    end
+
+
+    # load the latest calibrator recordings: 42AA and 42AB
+    fileloc_piston, millidelta_piston = levelcalibrate_retrievelatest(folderpath, hwinfo=piston)
+    fileloc_piezo, millidelta_piezo = levelcalibrate_retrievelatest(folderpath, hwinfo=piezo)
+    info("use latest calibration files:")
+    info(fileloc_piston)
+    info(fileloc_piezo)
+    assert(millidelta_piston <= Dates.Millisecond(Dates.Day(1)))
+    assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(1)))
+
+    # do recording
+    y_async, sync = recording_with_gain(source_gain_init) 
+    y = LibAudio.rm_syncsymbol(y_async, sync, t_decay, fs)
+
+    # dbspl of piston and piezo would give similar results: for example < 0.5dB
+    dbspl_piston = LibAudio.spl(fileloc_piston, y, y[:,1], 1, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
+    dbspl_piezo = LibAudio.spl(fileloc_piston, y, y[:,1], 1, fs, calibrator_reading=parse(Float64,piezo[:db]))
+    if abs(dbspl_piston[1] - dbspl_piezo[1]) > 0.5
+        error("calibration deviation > 0.5 dB(A), please re-calibrate! Abort")
+    else
+        info("calibration deviation: $(abs(dbspl_piston[1] - dbspl_piezo[1]))")
+    end
+
+    # if cross validation ok, use piston(42AA) for dBA measurement
+    dba_piston = LibAudio.spl(fileloc_piston, y, y[:,1], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
+    source_gain = source_gain_init + (dba_target - dba_piston[1])
+    
+    # apply the delta and remeasure
+    y = recording_with_gain(source_gain) 
+    dba_piston = LibAudio.spl(fileloc_piston, y, symbol, repeat, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
+
+    return symbol_gain, dba_piston[1]
+end

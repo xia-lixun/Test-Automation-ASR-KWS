@@ -975,6 +975,16 @@ using SHA
     end
 
 
+    function rm_syncsymbol(encoded::Matrix{Float64}, syncsymbol::Matrix{Float64}, time_symboldecay, fs)
+
+        lbs,pks,pksf,mgd = extract_symbol_and_merge(view(encoded,:,1), view(syncsymbol,:,1), 2)
+        info(diff(pks)[1])
+        info(diff(pksf)[1])
+        info(size(syncsymbol,1) + round(time_symboldecay * fs) + size(encoded,1))
+        lb = lbs[1] + size(syncsymbol,1) + round(time_symboldecay * fs)
+        rb = lbs[2] - 1
+        encoded[lb:rb,:]
+    end
 
 
 
