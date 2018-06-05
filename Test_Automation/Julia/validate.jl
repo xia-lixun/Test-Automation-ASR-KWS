@@ -1,4 +1,4 @@
-
+using Plots
 using WAV
 include("turntable.jl")
 include("heartbeat.jl")
@@ -195,7 +195,7 @@ hwinfo2string(hw::Dict{Symbol,String}) = hw[:calibrator] * "_" * hw[:db] * "_" *
 #   hwspec = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX")
 #   levelcalibrate_updateref(mixmic, 60.0, 48000, "D:\\AATT\\Data\\Calib\\Level", hwinfo=hwspec)
 function levelcalibrate_updateref(mixmic::Matrix{Float64}, seconds, fs, folderpath;
-    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
     
     r = SoundcardAPI.record(round(Int64, seconds * fs), mixmic, fs)
     t = replace(string(now()), [':','.'], '-')
@@ -206,7 +206,7 @@ end
 
 # note: time diff in millseconds, use Dates.Millisecond(24*3600*1000) for conditions
 function levelcalibrate_retrievelatest(folderpath;
-    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26AM", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    hwinfo = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
 
     fileloc = ""
     timespan = Vector{DateTime}([now(), now()])
