@@ -36,13 +36,13 @@ function auto(taskjsonfile)
     n_ldspk = length(conf["Task"][1]["Noise"]["Port"])
 
     # preparation of workers
-    session_open(2)
+    session_open(1)
     wid = workers()
     
     
     # [0.9]
     # check device and soundcard availability
-    digest = remotecall_fetch(Heartbeat.lux_isalive, wid[2])
+    digest = remotecall_fetch(Heartbeat.lux_isalive, wid[1])
     digest == false && error("device is not available!")
     digest = remotecall_fetch(SoundcardAPI.device, wid[1])
     digest[1] < 1 && error("soundcard is not available!")
@@ -186,12 +186,48 @@ function auto(taskjsonfile)
         speech_gain, dba_measure = levelcalibrate_dba(speech_eq_calib, 3, -6, sndmix_spk, sndmix_mic, fs, i["Mouth"][mouhot]["Level(dBA)"], conf["Level Calibration"])
         speech_eq .= 10^(speech_gain/20) .* speech_eq
         
-        
+        if !isempty(i["Noise"]["Source"])
+            sndmix_spk = zeros(n_ldspk, sndout_max)
+            for j = 1:n_ldspk
+                sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
+            end
+            noise_gain, dba_measure = levelcalibrate_dba(noise_eq, -6, sndmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"])
+            noise_eq .= 10^(noise_gain/20) .* noise_eq
+        end
+
         # [2.5]
         # dut echo level calibration if there is a requirement
+        if !isempty(i["Echo"]["Source"])
+            echo, rate = wavread(i["Echo"]["Source"])
+            assert(size(echo,2) == 2)
+            assert(Int64(rate) == fs)
+            
+            devmix_spk = eye(2)
+            echo_gain, dba_measure = levelcalibrate_dba(echo, -6, devmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"], mode=:fileio)
+            echo .= 10^(echo_gain/20) .* echo
+            wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
+        end
 
         # [2.6]
         # start playback and recording using signals after the eq and calibrated gains
+        if !isempty(i["Noise"]["Source"])
+            sndplay = zeros(max(size(speech_eq,1), size(noise_eq,1)), n_ldspk+1)
+            sndplay[1:size(noise_eq,1), 1:n_ldspk] = noise_eq[:,:]
+            sndplay[1:size(speech_eq,1), n_ldspk+1] = speech_eq[:,:]
+            # generate mix
+        else
+            sndplay = speech_eq
+            # generate mix
+        end
+        sndone = remotecall(SoundcardAPI.playrecord, wid[1])
+
+        if !isempty(i["Echo"]["Source"])
+            dut = Device.playrecord()
+        else
+            dut = Device.record()
+        end
+        refmic = fetch(sndone)
+
 
         # [2.7]
         # push results to scoring server
