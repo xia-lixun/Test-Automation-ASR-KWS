@@ -135,28 +135,36 @@ using SHA
             B = B / A[1]
             A = A / A[1]
         end
-        M = length(B)-1
-        N = length(A)-1
-        Br = flipdim(B,1)
-        As = A[2:end]
-        L = size(x,2)
+
+        nb = length(B)
+        na = length(A)
+        m = nb-1
+        n = na-1
+        BR = flipdim(B,1)
+        AS = A[2:end]
+        nx2 = size(x,2)
 
         y = zeros(size(x))
-        x = [zeros(M, L); x]
-        s = zeros(N, L)
+        x = [zeros(m, nx2); x]
+        s = zeros(n, nx2)
+        nx1 = size(x,1)
 
-        if N != 0 #ARMA
-            for j = 1:L
-                for i = M+1:size(x,1)
-                    y[i-M,j] = dot(Br, x[i-M:i,j]) - dot(As, s[:,j])
+        if n != 0 #ARMA
+            for j = 1:nx2
+                for i = m+1:nx1
+                    y[i-m,j] = dot(BR, view(x,i-m:i,j)) - dot(AS, view(s,:,j))
                     s[2:end,j] = s[1:end-1,j]
-                    s[1,j] = y[i-M,j] 
+                    s[1,j] = y[i-m,j] 
                 end
             end
         else #MA
-            for j = 1:L
-                for i = M+1:size(x,1)
-                    y[i-M,j] = dot(Br, x[i-M:i,j])
+            for j = 1:nx2
+                Threads.@threads for i = m+1:nx1
+                    y[i-m,j] = dot(BR, view(x, i-m:i, j))
+                    # for k = 1:nb
+                    #     y[i-m,j] += BR[k] * x[i-m-1+k,j]
+                    # end
+                    # [observation]: dot() is a better implement than loop
                 end
             end
         end
