@@ -1,0 +1,297 @@
+{
+    "Project": "Samsung LUX",
+    "Version": "0.0.0-Oak.Bee+b1",
+    "Sample Rate": 48000,
+    "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
+    "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180606.mat",
+
+    "Task":[
+        {
+            "Topic": "Test of KWS Performance in ETSI room",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientaton(deg)": 7.5,
+            "Report": "/path/report.xls",
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 500,
+                    "Port": 7,
+                    "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                    "Level(dBA)": 61
+                },
+                {
+                    "Distance(mm)": 1000,
+                    "Port": 8,
+                    "Source": "",
+                    "Level(dBA)": 62
+                },
+                {
+                    "Distance(mm)": 3000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 63
+                },
+                {
+                    "Distance(mm)": 5000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 64
+                }
+            ],
+
+            "Noise": {
+                "Source": "",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 57,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "",
+                "Level(dBA)": 75,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            },
+
+            "DUT Recording": {
+                "MicIn": "",
+                "MicRef": "",
+                "MicInput": "",
+                "DCBlock": "",
+                "AEC": "",
+                "FixedBeamFormer": "",
+                "GlobalEq": "",
+                "SpectralBeamSteering": "",
+                "AdaptiveBeamFormer": "",
+                "NoiseReduction": "",
+                "ASRLeveler": "",
+                "ASRLimiter": "",
+                "CallLeveler": "",
+                "Expander": "",
+                "CallEq": "",
+                "CallLimiter": "",
+                "MicOut": ""
+            }
+        },
+
+        {
+            "Topic": "Test of ASR Performance in Anechoic room",
+            "Room": "Anechoic",
+            "Type": "ASR",
+            "Orientaton(deg)": 15.3,
+            "Report": "/path/report.xls",
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 500,
+                    "Port": 7,
+                    "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                    "Level(dBA)": 61
+                },
+                {
+                    "Distance(mm)": 1000,
+                    "Port": 8,
+                    "Source": "",
+                    "Level(dBA)": 62
+                },
+                {
+                    "Distance(mm)": 3000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 63
+                },
+                {
+                    "Distance(mm)": 5000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 64
+                }
+            ],
+
+            "Noise": {
+                "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Noise\\QA_Noise_Babble_13m20s_48k.wav",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 60,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "",
+                "Level(dBA)": 70,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            },
+
+            "DUT Recording": {
+                "MicIn": "",
+                "MicRef": "",
+                "MicInput": "",
+                "DCBlock": "",
+                "AEC": "",
+                "FixedBeamFormer": "",
+                "GlobalEq": "",
+                "SpectralBeamSteering": "",
+                "AdaptiveBeamFormer": "",
+                "NoiseReduction": "",
+                "ASRLeveler": "",
+                "ASRLimiter": "",
+                "CallLeveler": "",
+                "Expander": "",
+                "CallEq": "",
+                "CallLimiter": "",
+                "MicOut": ""
+            }
+        },
+
+        {
+            "Topic": "Test of KWS Performance in ETSI room",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientaton(deg)": 7.5,
+            "Report": "/path/report.xls",
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 500,
+                    "Port": 7,
+                    "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                    "Level(dBA)": 61
+                },
+                {
+                    "Distance(mm)": 1000,
+                    "Port": 8,
+                    "Source": "",
+                    "Level(dBA)": 62
+                },
+                {
+                    "Distance(mm)": 3000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 63
+                },
+                {
+                    "Distance(mm)": 5000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 64
+                }
+            ],
+
+            "Noise": {
+                "Source": "",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 57,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Music\\Music_5Gerne_Mixed_13m20s_48k.wav",
+                "Level(dBA)": 75,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            },
+
+            "DUT Recording": {
+                "MicIn": "",
+                "MicRef": "",
+                "MicInput": "",
+                "DCBlock": "",
+                "AEC": "",
+                "FixedBeamFormer": "",
+                "GlobalEq": "",
+                "SpectralBeamSteering": "",
+                "AdaptiveBeamFormer": "",
+                "NoiseReduction": "",
+                "ASRLeveler": "",
+                "ASRLimiter": "",
+                "CallLeveler": "",
+                "Expander": "",
+                "CallEq": "",
+                "CallLimiter": "",
+                "MicOut": ""
+            }
+        },
+
+        {
+            "Topic": "Test of KWS Performance in ETSI room",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientaton(deg)": 7.5,
+            "Report": "/path/report.xls",
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 500,
+                    "Port": 7,
+                    "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                    "Level(dBA)": 61
+                },
+                {
+                    "Distance(mm)": 1000,
+                    "Port": 8,
+                    "Source": "",
+                    "Level(dBA)": 62
+                },
+                {
+                    "Distance(mm)": 3000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 63
+                },
+                {
+                    "Distance(mm)": 5000,
+                    "Port": 9,
+                    "Source": "",
+                    "Level(dBA)": 64
+                }
+            ],
+
+            "Noise": {
+                "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Noise\\QA_Noise_Microwave_13m20s_48k.wav",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 57,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Music\\Music_5Gerne_Mixed_13m20s_48k.wav",
+                "Level(dBA)": 75,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            },
+
+            "DUT Recording": {
+                "MicIn": "",
+                "MicRef": "",
+                "MicInput": "",
+                "DCBlock": "",
+                "AEC": "",
+                "FixedBeamFormer": "",
+                "GlobalEq": "",
+                "SpectralBeamSteering": "",
+                "AdaptiveBeamFormer": "",
+                "NoiseReduction": "",
+                "ASRLeveler": "",
+                "ASRLimiter": "",
+                "CallLeveler": "",
+                "Expander": "",
+                "CallEq": "",
+                "CallLimiter": "",
+                "MicOut": ""
+            }
+        }
+    ]
+}
