@@ -7,10 +7,10 @@
 
     "Task":[
         {
-            "Topic": "Test of KWS Performance in ETSI room",
+            "Topic": "Test A",
             "Room": "ETSI",
             "Type": "KWS",
-            "Orientaton(deg)": 7.5,
+            "Orientation(deg)": 7.5,
             "Report": "/path/report.xls",
 
             "Mouth": [
@@ -19,24 +19,6 @@
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
                     "Level(dBA)": 61
-                },
-                {
-                    "Distance(mm)": 1000,
-                    "Port": 8,
-                    "Source": "",
-                    "Level(dBA)": 62
-                },
-                {
-                    "Distance(mm)": 3000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 63
-                },
-                {
-                    "Distance(mm)": 5000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 64
                 }
             ],
 
@@ -79,10 +61,10 @@
         },
 
         {
-            "Topic": "Test of ASR Performance in Anechoic room",
+            "Topic": "Test B",
             "Room": "Anechoic",
             "Type": "ASR",
-            "Orientaton(deg)": 15.3,
+            "Orientation(deg)": 8.7,
             "Report": "/path/report.xls",
 
             "Mouth": [
@@ -91,24 +73,6 @@
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
                     "Level(dBA)": 61
-                },
-                {
-                    "Distance(mm)": 1000,
-                    "Port": 8,
-                    "Source": "",
-                    "Level(dBA)": 62
-                },
-                {
-                    "Distance(mm)": 3000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 63
-                },
-                {
-                    "Distance(mm)": 5000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 64
                 }
             ],
 
@@ -151,10 +115,10 @@
         },
 
         {
-            "Topic": "Test of KWS Performance in ETSI room",
+            "Topic": "Test C",
             "Room": "ETSI",
             "Type": "KWS",
-            "Orientaton(deg)": 7.5,
+            "Orientation(deg)": 9.9,
             "Report": "/path/report.xls",
 
             "Mouth": [
@@ -163,24 +127,6 @@
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
                     "Level(dBA)": 61
-                },
-                {
-                    "Distance(mm)": 1000,
-                    "Port": 8,
-                    "Source": "",
-                    "Level(dBA)": 62
-                },
-                {
-                    "Distance(mm)": 3000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 63
-                },
-                {
-                    "Distance(mm)": 5000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 64
                 }
             ],
 
@@ -223,10 +169,10 @@
         },
 
         {
-            "Topic": "Test of KWS Performance in ETSI room",
+            "Topic": "Test D",
             "Room": "ETSI",
             "Type": "KWS",
-            "Orientaton(deg)": 7.5,
+            "Orientation(deg)": 11.3,
             "Report": "/path/report.xls",
 
             "Mouth": [
@@ -235,24 +181,6 @@
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
                     "Level(dBA)": 61
-                },
-                {
-                    "Distance(mm)": 1000,
-                    "Port": 8,
-                    "Source": "",
-                    "Level(dBA)": 62
-                },
-                {
-                    "Distance(mm)": 3000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 63
-                },
-                {
-                    "Distance(mm)": 5000,
-                    "Port": 9,
-                    "Source": "",
-                    "Level(dBA)": 64
                 }
             ],
 

@@ -159,7 +159,7 @@ using SHA
             end
         else #MA
             for j = 1:nx2
-                Threads.@threads for i = m+1:nx1
+                for i = m+1:nx1
                     y[i-m,j] = dot(BR, view(x, i-m:i, j))
                     # for k = 1:nb
                     #     y[i-m,j] += BR[k] * x[i-m-1+k,j]
@@ -802,6 +802,7 @@ using SHA
             # r = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], r)
             # x = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], x)
             # s = tf_filter(AWEIGHT_48kHz_BA[:,1], AWEIGHT_48kHz_BA[:,2], s)
+
             r = tf_filter(b,a,r)
             x = tf_filter(b,a,x)
             s = tf_filter(b,a,s)
@@ -1254,6 +1255,40 @@ using SHA
         open(file, "r") do f
             reinterpret(dtype, read(f))
         end
+    end
+
+
+
+
+
+
+
+
+    function parse_textgrid(file)
+
+        result = Array{Tuple{String, Float64, Float64},1}()
+        is_interval = false
+        xmin = 0.0
+        xmax = 0.0
+        text = ""
+
+        fid = open(file, "r")
+        for i in eachline(fid)    
+            if ismatch(Regex("intervals \[[0-9]+\]:"), i)
+                is_interval = true
+            end
+            if is_interval
+                ismatch(Regex("xmin ="), i) && (xmin = parse(Float64, i[20:end]))
+                ismatch(Regex("xmax ="), i) && (xmax = parse(Float64, i[20:end]))
+                ismatch(Regex("text ="), i) && (text = i[21:end-1])
+                if !isempty(i[21:end-1])
+                    push!(result, (text,xmin,xmax))
+                end
+            end
+            info(i)
+        end
+        close(fid)
+        result
     end
 
 
