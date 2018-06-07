@@ -24,8 +24,9 @@ function auto(taskjsonfile)
 
     # reading parameters
     conf = JSON.parsefile(taskjsonfile)
-    fs = conf["Sample Rate"]
+    assert(VersionNumber(conf["Version"]) == v"0.0.1-alpha+b1")
 
+    fs = conf["Sample Rate"]
     function populate_mouth()
         mth = Set{Int64}()
         for i in conf["Task"][1]["Mouth"]
@@ -87,10 +88,12 @@ function auto(taskjsonfile)
 
         info("please tether 42AA to reference mic, when ready hit any key to proceed...")
         readline()
-        levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piston)
+        snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piston)
+        plot(snap)
         info("please tether 42AB to reference mic, when ready hit any key to proceed...")
         readline()
-        levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piezo)
+        snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piezo)
+        plot(snap)
         info("level calibration data updated, please restore mic back to position, when ready hit any key to proceed...")
         readline()
     end
@@ -117,28 +120,28 @@ function auto(taskjsonfile)
     # eq["ldpsk_3_a"]
     # eq["mouth_7_b"]
     # eq["mouth_7_a"]
-    eqchk = Dict{String, Matrix{Float64}}()
+    tf = Dict{String, Matrix{Float64}}()
     for i = 1:n_ldspk
         port = conf["Task"][1]["Noise"]["Port"][i]
         sndmix_spk = zeros(1, sndout_max)
         sndmix_spk[1, port] = 1.0
 
-        fund0, harm0, dirac0, resp0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
-        fund1, harm1, dirac1, resp1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), 
-                                                        b=eq["ldspk_$(port)_b"][:,1], a = [1.0])
-                                
-        # plot(20log10.(abs.(fft([fund0 fund1],1)).+eps()))
-        # plot(20log10.(abs.(fft([harm0 harm1],1)).+eps()))
+        fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
+        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eq["ldspk_$(port)_b"][:,1], a = [1.0])
         
+        plot([fu0[1:8192,:] fu1[1:8192,:]])
+        #plot(20log10.(abs.(fft([fund0 fund1],1)).+eps()))
+        #plot(20log10.(abs.(fft([harm0 harm1],1)).+eps()))
+
         # save to archive
-        eqchk["ldspk_$(port)_fund0"] = fund0
-        eqchk["ldspk_$(port)_fund1"] = fund1
-        eqchk["ldspk_$(port)_harm0"] = harm0
-        eqchk["ldspk_$(port)_harm1"] = harm1
-        eqchk["ldspk_$(port)_dirac0"] = dirac0
-        eqchk["ldspk_$(port)_dirac1"] = dirac1
-        eqchk["ldspk_$(port)_resp0"] = resp0
-        eqchk["ldspk_$(port)_resp1"] = resp1
+        tf["ldspk_$(port)_fun0"] = fu0
+        tf["ldspk_$(port)_fun1"] = fu1
+        tf["ldspk_$(port)_har0"] = ha0
+        tf["ldspk_$(port)_har1"] = ha1
+        tf["ldspk_$(port)_drc0"] = di0
+        tf["ldspk_$(port)_drc1"] = di1
+        tf["ldspk_$(port)_tot0"] = tt0
+        tf["ldspk_$(port)_tot1"] = tt1
         
         # conditions to proceed
     end
@@ -147,40 +150,66 @@ function auto(taskjsonfile)
         sndmix_spk = zeros(1, sndout_max)
         sndmix_spk[1, port] = 1.0
 
-        fund0, harm0, dirac0, resp0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
-        fund1, harm1, dirac1, resp1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), 
-                                                        b=eq["mouth_$(port)_b"][:,1], a = [1.0])
+        fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
+        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eq["mouth_$(port)_b"][:,1], a = [1.0])
 
+        plot([fu0[1:8192,:] fu1[1:8192,:]])
         #plot(20log10.(abs.(fft([fund0 fund1],1)).+eps()))
         #plot(20log10.(abs.(fft([harm0 harm1],1)).+eps()))
         
         # save to archive
-        eqchk["mouth_$(port)_fund0"] = fund0
-        eqchk["mouth_$(port)_fund1"] = fund1
-        eqchk["mouth_$(port)_harm0"] = harm0
-        eqchk["mouth_$(port)_harm1"] = harm1
-        eqchk["mouth_$(port)_dirac0"] = dirac0
-        eqchk["mouth_$(port)_dirac1"] = dirac1
-        eqchk["mouth_$(port)_resp0"] = resp0
-        eqchk["mouth_$(port)_resp1"] = resp1
+        tf["mouth_$(port)_fun0"] = fu0
+        tf["mouth_$(port)_fun1"] = fu1
+        tf["mouth_$(port)_har0"] = ha0
+        tf["mouth_$(port)_har1"] = ha1
+        tf["mouth_$(port)_drc0"] = di0
+        tf["mouth_$(port)_drc1"] = di1
+        tf["mouth_$(port)_tot0"] = tt0
+        tf["mouth_$(port)_tot1"] = tt1
 
         # conditions to proceed
     end
-    matwrite("eqchk.mat", eqchk)
-
-
-
-
-
-
     
+
+    # [1.3]
+    # check dut transfer function from dut speakers to reference mic
+    devmix_spk = eye(2)
+    fu2, ha2, di2, tt2 = impulse_response(devmix_spk, sndmix_mic, fs = fs, t_ess = 10, t_decay = 3, atten = -15, syncatten = -12, mode = (:fileio, :asio))
+
+    plot(fu2[1:8192,:])
+    tf["dut_refmic_fun"] = fu2
+    tf["dut_refmic_har"] = ha2
+    tf["dut_refmic_drc"] = di2
+    tf["dut_refmic_tot"] = tt2
+
+
+    # [1.4]
+    # check artificial mouth to dut raw mics
+    sndmix_spk = zeros(1, sndout_max)
+    sndmix_spk[1, conf["Task"][1]["Mouth"][1]["Port"]] = 1.0
+    devmix_mic = eye(8)
+
+    fu3, ha3, di3, tt3 = impulse_response(sndmix_spk, devmix_mic, fs = fs, t_ess = 10, t_decay = 3, atten = -18, syncatten = -12, mode = (:asio, :fileio))
+
+    plot(fu3[1:8192,:])
+    tf["mouth_dutrawmic_fun"] = fu3
+    tf["mouth_dutrawmic_har"] = ha3
+    tf["mouth_dutrawmic_drc"] = di3
+    tf["mouth_dutrawmic_tot"] = tt3
+
+
+
+    # make unique measurement folder, after all sanity checks ok
+    datpath = replace(string(now()), [':','.'], '-')
+    mkdir(datpath)
+    matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
+
+
     for i in conf["Task"]
 
-        info("start task $(i["Topic"])")
-
         # ----[2.0]----
-        rm(i["Topic"], force=true, recursive=true)
-        mkdir(i["Topic"])
+        info("start task $(i["Topic"])")
+        mkdir(joinpath(datpath, i["Topic"]))
 
         # ----[2.1]----
         # set the orientation of the dut
@@ -317,9 +346,9 @@ function auto(taskjsonfile)
         info("main recording finished")
 
         # process recording
-        mv("record.wav", joinpath(i["Topic"], "record.wav"), remove_destination=true)
-        wavwrite(refmic, joinpath(i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
-        info("results written to /$(i["Topic"])")
+        mv("record.wav", joinpath(datpath, i["Topic"], "record.wav"), remove_destination=true)
+        wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
+        info("results written to /$(datpath)/$(i["Topic"])")
 
         # [2.7]
         # push results to scoring server

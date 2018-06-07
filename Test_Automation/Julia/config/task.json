@@ -1,6 +1,6 @@
 {
     "Project": "Samsung LUX",
-    "Version": "0.0.0-Oak.Bee+b1",
+    "Version": "0.0.1-alpha+b1",
     "Sample Rate": 48000,
     "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
     "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180606.mat",
@@ -39,25 +39,8 @@
                 "Port": 9
             },
 
-            "DUT Recording": {
-                "MicIn": "",
-                "MicRef": "",
-                "MicInput": "",
-                "DCBlock": "",
-                "AEC": "",
-                "FixedBeamFormer": "",
-                "GlobalEq": "",
-                "SpectralBeamSteering": "",
-                "AdaptiveBeamFormer": "",
-                "NoiseReduction": "",
-                "ASRLeveler": "",
-                "ASRLimiter": "",
-                "CallLeveler": "",
-                "Expander": "",
-                "CallEq": "",
-                "CallLimiter": "",
-                "MicOut": ""
-            }
+            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
+                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
         },
 
         {
@@ -93,25 +76,8 @@
                 "Port": 9
             },
 
-            "DUT Recording": {
-                "MicIn": "",
-                "MicRef": "",
-                "MicInput": "",
-                "DCBlock": "",
-                "AEC": "",
-                "FixedBeamFormer": "",
-                "GlobalEq": "",
-                "SpectralBeamSteering": "",
-                "AdaptiveBeamFormer": "",
-                "NoiseReduction": "",
-                "ASRLeveler": "",
-                "ASRLimiter": "",
-                "CallLeveler": "",
-                "Expander": "",
-                "CallEq": "",
-                "CallLimiter": "",
-                "MicOut": ""
-            }
+            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
+                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
         },
 
         {
@@ -147,25 +113,8 @@
                 "Port": 9
             },
 
-            "DUT Recording": {
-                "MicIn": "",
-                "MicRef": "",
-                "MicInput": "",
-                "DCBlock": "",
-                "AEC": "",
-                "FixedBeamFormer": "",
-                "GlobalEq": "",
-                "SpectralBeamSteering": "",
-                "AdaptiveBeamFormer": "",
-                "NoiseReduction": "",
-                "ASRLeveler": "",
-                "ASRLimiter": "",
-                "CallLeveler": "",
-                "Expander": "",
-                "CallEq": "",
-                "CallLimiter": "",
-                "MicOut": ""
-            }
+            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
+                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
         },
 
         {
@@ -201,25 +150,8 @@
                 "Port": 9
             },
 
-            "DUT Recording": {
-                "MicIn": "",
-                "MicRef": "",
-                "MicInput": "",
-                "DCBlock": "",
-                "AEC": "",
-                "FixedBeamFormer": "",
-                "GlobalEq": "",
-                "SpectralBeamSteering": "",
-                "AdaptiveBeamFormer": "",
-                "NoiseReduction": "",
-                "ASRLeveler": "",
-                "ASRLimiter": "",
-                "CallLeveler": "",
-                "Expander": "",
-                "CallEq": "",
-                "CallLimiter": "",
-                "MicOut": ""
-            }
+            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
+                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
         }
     ]
 }
