@@ -228,6 +228,8 @@ end
 # note: symbol is the segment of signal for level measurement
 # note: repeat if for multiple trial --- t_context + (symbol + decay) x repeat
 # note: folderpath is the path for reference mic recordings of the calibrators (piston and piezo etc...)
+# note: validation method 1: compare against the spl meter
+#       validation method 2: 200hz -> 10dB lower than dBSPL, 1kHz-> the same, 6kHz-> almost the same, 7kHz-> 0.8 dB lower than dBSPL
 function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
     barometer_correction = 0.0,
     mode = :asio,

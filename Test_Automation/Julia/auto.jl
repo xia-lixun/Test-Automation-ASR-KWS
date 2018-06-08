@@ -20,6 +20,8 @@ include("validate.jl")
 
 
 
+
+
 function auto(taskjsonfile)
 
     # reading parameters
@@ -89,11 +91,11 @@ function auto(taskjsonfile)
         info("please tether 42AA to reference mic, when ready hit any key to proceed...")
         readline()
         snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piston)
-        plot(snap)
+        display(plot(snap))
         info("please tether 42AB to reference mic, when ready hit any key to proceed...")
         readline()
         snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piezo)
-        plot(snap)
+        display(plot(snap))
         info("level calibration data updated, please restore mic back to position, when ready hit any key to proceed...")
         readline()
     end
@@ -127,11 +129,16 @@ function auto(taskjsonfile)
         sndmix_spk[1, port] = 1.0
 
         fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
-        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eq["ldspk_$(port)_b"][:,1], a = [1.0])
+        eqB = eqload(eq["ldspk_$(port)_b"])
+        eqA = eqload(eq["ldspk_$(port)_a"])
+        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eqB, a = eqA)
         
-        plot([fu0[1:8192,:] fu1[1:8192,:]])
-        #plot(20log10.(abs.(fft([fund0 fund1],1)).+eps()))
-        #plot(20log10.(abs.(fft([harm0 harm1],1)).+eps()))
+        #display(plot([fu0[1:65536,:] fu1[1:65536,:]]))
+        fu01 = abs.(fft([fu0[1:65536,:] fu1[1:65536,:]],1)) / 65536
+        display(plot( 20log10.(fu01[1:32768,:].+eps()) ))
+        sleep(3)
+        ha01 = abs.(fft([ha0 ha1],1)) / size(ha0,1)
+        display(plot( 20log10.(ha01[1:div(size(ha01,1),2)].+eps()) ))
 
         # save to archive
         tf["ldspk_$(port)_fun0"] = fu0
@@ -151,11 +158,16 @@ function auto(taskjsonfile)
         sndmix_spk[1, port] = 1.0
 
         fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
-        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eq["mouth_$(port)_b"][:,1], a = [1.0])
+        eqB = eqload(eq["mouth_$(port)_b"])
+        eqA = eqload(eq["mouth_$(port)_a"])
+        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eqB, a = eqA)
 
-        plot([fu0[1:8192,:] fu1[1:8192,:]])
-        #plot(20log10.(abs.(fft([fund0 fund1],1)).+eps()))
-        #plot(20log10.(abs.(fft([harm0 harm1],1)).+eps()))
+        #display(plot([fu0[1:65536,:] fu1[1:65536,:]]))
+        fu01 = abs.(fft([fu0[1:65536,:] fu1[1:65536,:]],1)) / 65536
+        display(plot( 20log10.(fu01[1:32768,:].+eps()) ))
+        sleep(3)
+        ha01 = abs.(fft([ha0 ha1],1)) / size(ha0,1)
+        display(plot( 20log10.(ha01[1:div(size(ha01,1),2)].+eps()) ))
         
         # save to archive
         tf["mouth_$(port)_fun0"] = fu0
@@ -173,10 +185,16 @@ function auto(taskjsonfile)
 
     # [1.3]
     # check dut transfer function from dut speakers to reference mic
-    devmix_spk = eye(2)
+    devmix_spk = ones(1,2)
     fu2, ha2, di2, tt2 = impulse_response(devmix_spk, sndmix_mic, fs = fs, t_ess = 10, t_decay = 3, atten = -15, syncatten = -12, mode = (:fileio, :asio))
 
-    plot(fu2[1:8192,:])
+    # display(plot(fu2[1:65536,:]))
+    fu2v = abs.(fft(fu2[1:65536,:],1)) / 65536
+    display(plot( 20log10.(fu2v[1:32768,:].+eps()) ))
+    sleep(3)
+    ha2v = abs.(fft(ha2,1)) / size(ha2,1)
+    display(plot( 20log10.(ha2v[1:div(size(ha2v,1),2),:].+eps()) ))
+
     tf["dut_refmic_fun"] = fu2
     tf["dut_refmic_har"] = ha2
     tf["dut_refmic_drc"] = di2
@@ -191,7 +209,13 @@ function auto(taskjsonfile)
 
     fu3, ha3, di3, tt3 = impulse_response(sndmix_spk, devmix_mic, fs = fs, t_ess = 10, t_decay = 3, atten = -18, syncatten = -12, mode = (:asio, :fileio))
 
-    plot(fu3[1:8192,:])
+    # display(plot(fu3[1:65536,:]))
+    fu3v = abs.(fft(fu3[1:65536,:],1)) / 65536
+    display(plot( 20log10.(fu3v[1:32768,:].+eps()) ))
+    sleep(3)
+    ha3v = abs.(fft(ha3,1)) / size(ha3,1)
+    display(plot( 20log10.(ha3v[1:div(size(ha3v,1),2),:].+eps()) ))
+
     tf["mouth_dutrawmic_fun"] = fu3
     tf["mouth_dutrawmic_har"] = ha3
     tf["mouth_dutrawmic_drc"] = di3
@@ -335,17 +359,41 @@ function auto(taskjsonfile)
         dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
         pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
         pcmi = SharedArray{Float32,1}(zeros(Float32, size(sndmix_mic,1) * size(dat)[1]))
-        sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # latency is low
-        if !isempty(i["Echo"]["Source"])            
-            Device.luxplayrecord([])
-        else
-            Device.luxrecord([])
-        end
-        fetch(sndone)
-        refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
-        info("main recording finished")
+        
+        complete = false
+        expback = 2
+        while !complete
+            sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # low-latency api
+            if !isempty(i["Echo"]["Source"])            
+                Device.luxplayrecord([])
+            else
+                Device.luxrecord([])
+            end
+            fetch(sndone)
+            info("main recording finished")
 
-        # process recording
+            finalout, rate = wavread("record.wav")
+            dutalive = Device.luxisalive()
+
+            if dutalive && size(finalout,1) >= floor(Int64, t_record * rate) 
+                complete = true
+
+            elseif dutalive && size(finalout,1) < floor(Int64, t_record * rate)
+                warn("possible parecord/paplay process not found, retry...")
+                Device.luxinit()
+                sleep(expback)
+                expback = 2expback
+                if expback >= 64
+                    dutalive = false
+                    complete = true
+                end
+            else    
+                warn("device seems to be dead, retry...")
+                complete = true
+            end
+        end
+
+        refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
         mv("record.wav", joinpath(datpath, i["Topic"], "record.wav"), remove_destination=true)
         wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
         info("results written to /$(datpath)/$(i["Topic"])")
@@ -364,9 +412,17 @@ end
 
 
 
-
-
-
+function eqload(x)
+    if ndims(x) == 0
+        y = [x]
+    elseif ndims(x) == 1
+        y = x
+    elseif ndims(x) == 2
+        y = x[:,1]
+    else
+        error("eq load dim error")
+    end
+end
 
 
 

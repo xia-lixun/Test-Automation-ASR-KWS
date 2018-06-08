@@ -637,8 +637,9 @@ using SHA
 
         ℝ = xcorr(s, x)
         verbose && info("peak value: $(maximum(ℝ))")                              
-        vision && (box = plot(x, size=(800,200)))
-        
+        #vision && (box = plot(x, size=(800,200)))
+        vision && (box = plot(x))
+
         𝓡 = sort(ℝ[local_maxima(ℝ)], rev = true)
         isempty(𝓡) && ( return (y, diff(peaks)) )
 
