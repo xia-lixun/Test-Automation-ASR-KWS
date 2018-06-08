@@ -231,167 +231,173 @@ function auto(taskjsonfile)
 
     for i in conf["Task"]
 
-        # ----[2.0]----
-        info("start task $(i["Topic"])")
-        mkdir(joinpath(datpath, i["Topic"]))
+        dutalive = false
+        while !dutalive
 
-        # ----[2.1]----
-        # set the orientation of the dut
-        Turntable.rotate(rs232, i["Orientation(deg)"], direction="CCW")
-        info("turntable operated")
+            # ----[2.0]----
+            info("start task $(i["Topic"])")
+            mkdir(joinpath(datpath, i["Topic"]))
 
-        # ----[2.2]----
-        # power cycle the dut
-        digest = Heartbeat.dutreset_client()
-        info(digest)
-        sleep(10)
+            # ----[2.1]----
+            # set the orientation of the dut
+            Turntable.rotate(rs232, i["Orientation(deg)"], direction="CCW")
+            info("turntable operated")
 
-        # ----[2.3]----
-        # apply eq to speech and noise files, peak normalize to avoid clipping
-        mouhot = 0
-        for (k,j) in enumerate(i["Mouth"])
-            if !isempty(j["Source"])
-                mouhot = k
-                break
+            # ----[2.2]----
+            # power cycle the dut
+            digest = Heartbeat.dutreset_client()
+            info(digest)
+            sleep(10)
+
+            # ----[2.3]----
+            # apply eq to speech and noise files, peak normalize to avoid clipping
+            mouhot = 0
+            for (k,j) in enumerate(i["Mouth"])
+                if !isempty(j["Source"])
+                    mouhot = k
+                    break
+                end
             end
-        end
-        speech, rate = wavread(i["Mouth"][mouhot]["Source"])
-        assert(size(speech,2) == 1)
-        assert(Int64(rate) == fs)
-
-        mouhot_p = i["Mouth"][mouhot]["Port"]
-        speech_eq = LibAudio.tf_filter([1.0], [1.0], speech)   #eq["mouth_$(mouhot_p)_b"][:,1]
-        speech_eq = speech_eq ./ maximum(speech_eq)
-        info("speech eq applied and peak normalized")
-
-        if !isempty(i["Noise"]["Source"])
-            noise, rate = wavread(i["Noise"]["Source"])
-            n_noise = size(noise,2)
-            assert(in(n_noise, [1, n_ldspk]))       # noise file is either mono-channel, or n-channel that fits the noise loudspeakers
+            speech, rate = wavread(i["Mouth"][mouhot]["Source"])
+            assert(size(speech,2) == 1)
             assert(Int64(rate) == fs)
 
-            noise_eq = zeros(size(noise,1), n_ldspk)
-            for j = 1:n_ldspk
-                port = i["Noise"]["Port"][j]
-                noise_eq[:,j] = LibAudio.tf_filter([1.0], [1.0], noise[:, min(j, n_noise)])  #eq["ldpsk_$(port)_b"][:,1]
-                noise_eq[:,j] = noise_eq[:,j] ./ maximum(noise_eq[:,j])
+            mouhot_p = i["Mouth"][mouhot]["Port"]
+            speech_eq = LibAudio.tf_filter([1.0], [1.0], speech)   #eq["mouth_$(mouhot_p)_b"][:,1]
+            speech_eq = speech_eq ./ maximum(speech_eq)
+            info("speech eq applied and peak normalized")
+
+            if !isempty(i["Noise"]["Source"])
+                noise, rate = wavread(i["Noise"]["Source"])
+                n_noise = size(noise,2)
+                assert(in(n_noise, [1, n_ldspk]))       # noise file is either mono-channel, or n-channel that fits the noise loudspeakers
+                assert(Int64(rate) == fs)
+
+                noise_eq = zeros(size(noise,1), n_ldspk)
+                for j = 1:n_ldspk
+                    port = i["Noise"]["Port"][j]
+                    noise_eq[:,j] = LibAudio.tf_filter([1.0], [1.0], noise[:, min(j, n_noise)])  #eq["ldpsk_$(port)_b"][:,1]
+                    noise_eq[:,j] = noise_eq[:,j] ./ maximum(noise_eq[:,j])
+                end
+                info("noise source detected: eq applied and peak normalized")
+            else
+                info("noise source not present, skip eq")
             end
-            info("noise source detected: eq applied and peak normalized")
-        else
-            info("noise source not present, skip eq")
-        end
 
 
-        # ----[2.4]----
-        # level calibration of mouth and noise speakers
-        t0 = round(Int64, 5.5fs)
-        t1 = round(Int64, 6.611fs)
-        speech_eq_calib = [speech_eq[t0:t1,1]; speech_eq[t0:t1,1]; speech_eq[t0:t1,1]]
+            # ----[2.4]----
+            # level calibration of mouth and noise speakers
+            t0 = round(Int64, 5.5fs)
+            t1 = round(Int64, 6.611fs)
+            speech_eq_calib = [speech_eq[t0:t1,1]; speech_eq[t0:t1,1]; speech_eq[t0:t1,1]]
 
-        sndmix_spk = zeros(1, sndout_max)
-        sndmix_spk[1, mouhot_p] = 1.0
-        speech_gain, dba_measure = levelcalibrate_dba(speech_eq_calib, 3, -6, sndmix_spk, sndmix_mic, fs, i["Mouth"][mouhot]["Level(dBA)"], conf["Level Calibration"])
-        speech_eq .= 10^(speech_gain/20) .* speech_eq
-        info("speech_eq level calibrated")
+            sndmix_spk = zeros(1, sndout_max)
+            sndmix_spk[1, mouhot_p] = 1.0
+            speech_gain, dba_measure = levelcalibrate_dba(speech_eq_calib, 3, -6, sndmix_spk, sndmix_mic, fs, i["Mouth"][mouhot]["Level(dBA)"], conf["Level Calibration"])
+            speech_eq .= 10^(speech_gain/20) .* speech_eq
+            info("speech_eq level calibrated")
 
-        if !isempty(i["Noise"]["Source"])
-            t0 = round(Int64, 60fs)
-            t1 = round(Int64, 120fs)
-            noise_eq_calib = noise_eq[t0:t1, :]
+            if !isempty(i["Noise"]["Source"])
+                t0 = round(Int64, 60fs)
+                t1 = round(Int64, 120fs)
+                noise_eq_calib = noise_eq[t0:t1, :]
 
-            sndmix_spk = zeros(n_ldspk, sndout_max)
+                sndmix_spk = zeros(n_ldspk, sndout_max)
+                for j = 1:n_ldspk
+                    sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
+                end
+                noise_gain, dba_measure = levelcalibrate_dba(noise_eq_calib, -6, sndmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"])
+                noise_eq .= 10^(noise_gain/20) .* noise_eq
+                info("noise_eq level calibrated")
+            else
+                info("skip noise level calibration")
+            end
+
+
+            # ----[2.5]----
+            # dut echo level calibration if there is a requirement
+            if !isempty(i["Echo"]["Source"])
+                echo, rate = wavread(i["Echo"]["Source"])
+                assert(size(echo,2) == 2)
+                assert(Int64(rate) == fs)
+
+                t0 = round(Int64, 60fs)
+                t1 = round(Int64, 120fs)
+                echo_calib = echo[t0:t1, :]
+                
+                devmix_spk = eye(2)
+                echo_gain, dba_measure = levelcalibrate_dba(echo_calib, -6, devmix_spk, sndmix_mic, fs, i["Echo"]["Level(dBA)"], conf["Level Calibration"], mode=:fileio)
+                echo .= 10^(echo_gain/20) .* echo
+                wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
+                info("echo source detected: level calibrated")
+            else
+                info("echo source not present, skip level calibration")
+            end
+
+
+            # ----[2.6]----
+            # start playback and recording using signals after the eq and calibrated gains
+            sndplay = zeros(size(speech_eq,1), n_ldspk+1)
+            if !isempty(i["Noise"]["Source"])
+                sndplay[:, 1:n_ldspk] = noise_eq[1:min(size(speech_eq,1),size(noise_eq,1)),:]
+            end
+            sndplay[:, n_ldspk+1] = speech_eq[:,:]
+            
+            # generate mix
+            sndmix_spk = zeros(n_ldspk+1, sndout_max)
             for j = 1:n_ldspk
                 sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
             end
-            noise_gain, dba_measure = levelcalibrate_dba(noise_eq_calib, -6, sndmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"])
-            noise_eq .= 10^(noise_gain/20) .* noise_eq
-            info("noise_eq level calibrated")
-        else
-            info("skip noise level calibration")
-        end
+            sndmix_spk[n_ldspk+1, mouhot_p] = 1.0
 
-
-        # ----[2.5]----
-        # dut echo level calibration if there is a requirement
-        if !isempty(i["Echo"]["Source"])
-            echo, rate = wavread(i["Echo"]["Source"])
-            assert(size(echo,2) == 2)
-            assert(Int64(rate) == fs)
-
-            t0 = round(Int64, 60fs)
-            t1 = round(Int64, 120fs)
-            echo_calib = echo[t0:t1, :]
-            
-            devmix_spk = eye(2)
-            echo_gain, dba_measure = levelcalibrate_dba(echo_calib, -6, devmix_spk, sndmix_mic, fs, i["Echo"]["Level(dBA)"], conf["Level Calibration"], mode=:fileio)
-            echo .= 10^(echo_gain/20) .* echo
-            wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
-            info("echo source detected: level calibrated")
-        else
-            info("echo source not present, skip level calibration")
-        end
-
-
-        # ----[2.6]----
-        # start playback and recording using signals after the eq and calibrated gains
-        sndplay = zeros(size(speech_eq,1), n_ldspk+1)
-        if !isempty(i["Noise"]["Source"])
-            sndplay[:, 1:n_ldspk] = noise_eq[1:min(size(speech_eq,1),size(noise_eq,1)),:]
-        end
-        sndplay[:, n_ldspk+1] = speech_eq[:,:]
-        
-        # generate mix
-        sndmix_spk = zeros(n_ldspk+1, sndout_max)
-        for j = 1:n_ldspk
-            sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
-        end
-        sndmix_spk[n_ldspk+1, mouhot_p] = 1.0
-
-        t_record = ceil(size(sndplay,1)/fs) + 3.0
-        if !isempty(i["Echo"]["Source"])
-            Device.luxplayrecord("echocalibrated.wav", t_record, [])
-        else
-            Device.luxrecord(t_record, [])
-        end
-        info("main recording ready for go")    
-        
-        # bang!
-        dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
-        pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
-        pcmi = SharedArray{Float32,1}(zeros(Float32, size(sndmix_mic,1) * size(dat)[1]))
-        
-        complete = false
-        expback = 2
-        while !complete
-            sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # low-latency api
-            if !isempty(i["Echo"]["Source"])            
-                Device.luxplayrecord([])
+            t_record = ceil(size(sndplay,1)/fs) + 3.0
+            if !isempty(i["Echo"]["Source"])
+                Device.luxplayrecord("echocalibrated.wav", t_record, [])
             else
-                Device.luxrecord([])
+                Device.luxrecord(t_record, [])
             end
-            fetch(sndone)
-            info("main recording finished")
+            info("main recording ready for go")    
+            
+            # bang!
+            dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
+            pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
+            pcmi = SharedArray{Float32,1}(zeros(Float32, size(sndmix_mic,1) * size(dat)[1]))
+            
+            complete = false
+            expback = 2
+            while !complete
+                sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # low-latency api
+                if !isempty(i["Echo"]["Source"])            
+                    Device.luxplayrecord([])
+                else
+                    Device.luxrecord([])
+                end
+                fetch(sndone)
+                info("main recording finished")
 
-            finalout, rate = wavread("record.wav")
-            dutalive = Device.luxisalive()
+                finalout, rate = wavread("record.wav")
+                dutalive = Device.luxisalive()
 
-            if dutalive && size(finalout,1) >= floor(Int64, t_record * rate) 
-                complete = true
+                if dutalive && size(finalout,1) >= floor(Int64, t_record * rate) 
+                    info("recording seems to be ok for file length")
+                    complete = true
 
-            elseif dutalive && size(finalout,1) < floor(Int64, t_record * rate)
-                warn("possible parecord/paplay process not found, retry...")
-                Device.luxinit()
-                sleep(expback)
-                expback = 2expback
-                if expback >= 64
-                    dutalive = false
+                elseif dutalive && size(finalout,1) < floor(Int64, t_record * rate)
+                    warn("possibly parecord/paplay process not found, redo the main recording")
+                    #Device.luxinit()
+                    sleep(expback)
+                    expback = 2expback
+                    if expback >= 64
+                        dutalive = false
+                        complete = true
+                    end
+                else    
+                    warn("device seems dead, redo the task")
                     complete = true
                 end
-            else    
-                warn("device seems to be dead, retry...")
-                complete = true
-            end
-        end
+            end # while !complete
+            
+        end # while !dutalive
 
         refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
         mv("record.wav", joinpath(datpath, i["Topic"], "record.wav"), remove_destination=true)

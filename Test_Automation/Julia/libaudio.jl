@@ -1268,27 +1268,20 @@ using SHA
     function parse_textgrid(file)
 
         result = Array{Tuple{String, Float64, Float64},1}()
-        is_interval = false
-        xmin = 0.0
-        xmax = 0.0
-        text = ""
+        open(file, "r") do fid
+            x = ""
+            while !ismatch(Regex("intervals \[[0-9]+\]:"), x)
+                x = readline(fid)
+            end
 
-        fid = open(file, "r")
-        for i in eachline(fid)    
-            if ismatch(Regex("intervals \[[0-9]+\]:"), i)
-                is_interval = true
+            while !eof(fid)
+                x = readline(fid)  # interval [1]:
+                xmin = readline(fid)
+                xmax = readline(fid)
+                text = readline(fid)
+                !isempty(text[21:end-1]) && push!(result, (text[21:end-1], parse(Float64, xmin[20:end]), parse(Float64, xmax[20:end])))
             end
-            if is_interval
-                ismatch(Regex("xmin ="), i) && (xmin = parse(Float64, i[20:end]))
-                ismatch(Regex("xmax ="), i) && (xmax = parse(Float64, i[20:end]))
-                ismatch(Regex("text ="), i) && (text = i[21:end-1])
-                if !isempty(i[21:end-1])
-                    push!(result, (text,xmin,xmax))
-                end
-            end
-            info(i)
         end
-        close(fid)
         result
     end
 
