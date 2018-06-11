@@ -138,7 +138,7 @@ function auto(taskjsonfile)
         display(plot( 20log10.(fu01[1:32768,:].+eps()) ))
         sleep(3)
         ha01 = abs.(fft([ha0 ha1],1)) / size(ha0,1)
-        display(plot( 20log10.(ha01[1:div(size(ha01,1),2)].+eps()) ))
+        display(plot( 20log10.(ha01[1:div(size(ha01,1),2),:].+eps()) ))
 
         # save to archive
         tf["ldspk_$(port)_fun0"] = fu0
@@ -167,7 +167,7 @@ function auto(taskjsonfile)
         display(plot( 20log10.(fu01[1:32768,:].+eps()) ))
         sleep(3)
         ha01 = abs.(fft([ha0 ha1],1)) / size(ha0,1)
-        display(plot( 20log10.(ha01[1:div(size(ha01,1),2)].+eps()) ))
+        display(plot( 20log10.(ha01[1:div(size(ha01,1),2),:].+eps()) ))
         
         # save to archive
         tf["mouth_$(port)_fun0"] = fu0
@@ -376,15 +376,19 @@ function auto(taskjsonfile)
                 info("main recording finished")
 
                 finalout, rate = wavread("record.wav")
-                dutalive = Device.luxisalive()
+                dutalive = Heartbeat.luxisalive()
 
                 if dutalive && size(finalout,1) >= floor(Int64, t_record * rate) 
                     info("recording seems to be ok for file length")
+
+                    refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
+                    mv("record.wav", joinpath(datpath, i["Topic"], "record.wav"), remove_destination=true)
+                    wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
+                    info("results written to /$(datpath)/$(i["Topic"])")            
                     complete = true
 
                 elseif dutalive && size(finalout,1) < floor(Int64, t_record * rate)
                     warn("possibly parecord/paplay process not found, redo the main recording")
-                    #Device.luxinit()
                     sleep(expback)
                     expback = 2expback
                     if expback >= 64
@@ -396,13 +400,8 @@ function auto(taskjsonfile)
                     complete = true
                 end
             end # while !complete
-            
         end # while !dutalive
 
-        refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
-        mv("record.wav", joinpath(datpath, i["Topic"], "record.wav"), remove_destination=true)
-        wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
-        info("results written to /$(datpath)/$(i["Topic"])")
 
         # [2.7]
         # push results to scoring server

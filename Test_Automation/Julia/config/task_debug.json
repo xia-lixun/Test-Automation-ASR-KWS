@@ -1,0 +1,46 @@
+{
+    "Project": "Samsung LUX",
+    "Version": "0.0.1-alpha+b1",
+    "Sample Rate": 48000,
+    "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
+    "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180606.mat",
+
+    "Task":[
+        {
+            "Topic": "Test A",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientation(deg)": 7.5,
+            "Report": "/path/report.xls",
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 500,
+                    "Port": 7,
+                    "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                    "Level(dBA)": 51
+                }
+            ],
+
+            "Noise": {
+                "Source": "",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 47,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "",
+                "Level(dBA)": 65,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            },
+
+            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
+                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
+        }
+    ]
+}
