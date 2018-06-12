@@ -18,7 +18,7 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 61
+                    "Level(dBA)": 51
                 }
             ],
 
@@ -44,7 +44,7 @@
         },
 
         {
-            "Topic": "Test B",
+            "Topic": "Noise",
             "Room": "Anechoic",
             "Type": "ASR",
             "Orientation(deg)": 8.7,
@@ -62,7 +62,7 @@
             "Noise": {
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Noise\\QA_Noise_Babble_13m20s_48k.wav",
                 "Port": [3,4,5,6],
-                "Level(dBA)": 60,
+                "Level(dBA)": 57,
                 "Position": "10mm above DUT"
             },
 
@@ -81,7 +81,7 @@
         },
 
         {
-            "Topic": "Test C",
+            "Topic": "Echo",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 9.9,
@@ -92,7 +92,7 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 61
+                    "Level(dBA)": 55
                 }
             ],
 
@@ -105,7 +105,7 @@
 
             "Echo": {
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Music\\Music_5Gerne_Mixed_13m20s_48k.wav",
-                "Level(dBA)": 75,
+                "Level(dBA)": 70,
                 "Position": "10mm above DUT"
             },
 
@@ -129,14 +129,14 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 61
+                    "Level(dBA)": 67
                 }
             ],
 
             "Noise": {
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Noise\\QA_Noise_Microwave_13m20s_48k.wav",
                 "Port": [3,4,5,6],
-                "Level(dBA)": 57,
+                "Level(dBA)": 51,
                 "Position": "10mm above DUT"
             },
 

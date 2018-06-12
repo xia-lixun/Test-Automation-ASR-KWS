@@ -53,17 +53,23 @@ function auto(taskjsonfile)
     # [0.9]
     # check device and soundcard availability
     Heartbeat.dutreset_client()
-    sleep(10)
+    sleep(20)
+    while !Device.luxisalive()
+        warn("device is not available? reboot the dut")
+        Heartbeat.dutreset_client()
+        sleep(20)    
+    end
+    info("dut reboot ok")
+    
 
-    !Heartbeat.luxisalive() && error("device is not available?")
-    digest = SoundcardAPI.device()
-    digest[1] < 1 && error("soundcard is not available?")
+    dgt = SoundcardAPI.device()
+    dgt[1] < 1 && error("soundcard is not available?")
     info("device and soundcard found.")
 
     # read parameters from the soundcard
-    m = match(Regex("[0-9]+"), digest[2][6])
+    m = match(Regex("[0-9]+"), dgt[2][6])
     sndin_max = min(10, parse(Int64, m.match))
-    m = match(Regex("[0-9]+"), digest[2][6], m.offset+length(m.match))
+    m = match(Regex("[0-9]+"), dgt[2][6], m.offset+length(m.match))
     sndout_max = min(10, parse(Int64, m.match))
     info("soundcard i/o max: $(sndin_max)/$(sndout_max)")
 
@@ -119,7 +125,7 @@ function auto(taskjsonfile)
     # mouth loudspeaker eq check
     eq = matread(conf["Equalization Filters"])
     # eq["ldspk_3_b"]
-    # eq["ldpsk_3_a"]
+    # eq["ldspk_3_a"]
     # eq["mouth_7_b"]
     # eq["mouth_7_a"]
     tf = Dict{String, Matrix{Float64}}()
@@ -223,6 +229,10 @@ function auto(taskjsonfile)
 
 
 
+
+
+
+    #
     # make unique measurement folder, after all sanity checks ok
     datpath = replace(string(now()), [':','.'], '-')
     mkdir(datpath)
@@ -231,6 +241,7 @@ function auto(taskjsonfile)
 
     for i in conf["Task"]
 
+        status = false
         dutalive = false
         while !dutalive
 
@@ -245,9 +256,13 @@ function auto(taskjsonfile)
 
             # ----[2.2]----
             # power cycle the dut
-            digest = Heartbeat.dutreset_client()
-            info(digest)
+            Heartbeat.dutreset_client()
             sleep(10)
+            while !Device.luxisalive()
+                Heartbeat.dutreset_client()
+                sleep(10)
+            end
+            info("dut reboot ok")
 
             # ----[2.3]----
             # apply eq to speech and noise files, peak normalize to avoid clipping
@@ -263,7 +278,7 @@ function auto(taskjsonfile)
             assert(Int64(rate) == fs)
 
             mouhot_p = i["Mouth"][mouhot]["Port"]
-            speech_eq = LibAudio.tf_filter([1.0], [1.0], speech)   #eq["mouth_$(mouhot_p)_b"][:,1]
+            speech_eq = LibAudio.tf_filter(eqload(eq["mouth_$(mouhot_p)_b"]), eqload(eq["mouth_$(mouhot_p)_a"]), speech)   
             speech_eq = speech_eq ./ maximum(speech_eq)
             info("speech eq applied and peak normalized")
 
@@ -276,7 +291,7 @@ function auto(taskjsonfile)
                 noise_eq = zeros(size(noise,1), n_ldspk)
                 for j = 1:n_ldspk
                     port = i["Noise"]["Port"][j]
-                    noise_eq[:,j] = LibAudio.tf_filter([1.0], [1.0], noise[:, min(j, n_noise)])  #eq["ldpsk_$(port)_b"][:,1]
+                    noise_eq[:,j] = LibAudio.tf_filter(eqload(eq["ldspk_$(port)_b"]), eqload(eq["ldspk_$(port)_a"]), noise[:, min(j, n_noise)])
                     noise_eq[:,j] = noise_eq[:,j] ./ maximum(noise_eq[:,j])
                 end
                 info("noise source detected: eq applied and peak normalized")
@@ -349,14 +364,18 @@ function auto(taskjsonfile)
                 sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
             end
             sndmix_spk[n_ldspk+1, mouhot_p] = 1.0
-
+            
+            # recording time duration
             t_record = ceil(size(sndplay,1)/fs) + 3.0
+
+            dutalive = true
             if !isempty(i["Echo"]["Source"])
-                Device.luxplayrecord("echocalibrated.wav", t_record, [])
+                status = Device.luxplayrecord("echocalibrated.wav", t_record, [])
             else
-                Device.luxrecord(t_record, [])
+                status = Device.luxrecord(t_record, [])
             end
-            info("main recording ready for go")    
+            dutalive = dutalive && status
+            info("main recording ready for go: dut status - $(status)")    
             
             # bang!
             dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
@@ -368,15 +387,16 @@ function auto(taskjsonfile)
             while !complete
                 sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # low-latency api
                 if !isempty(i["Echo"]["Source"])            
-                    Device.luxplayrecord([])
+                    status = Device.luxplayrecord([])
                 else
-                    Device.luxrecord([])
+                    status = Device.luxrecord([])
                 end
                 fetch(sndone)
-                info("main recording finished")
+                dutalive = dutalive && status
+                info("main recording finished: dut status - $(status)")
 
                 finalout, rate = wavread("record.wav")
-                dutalive = Heartbeat.luxisalive()
+                dutalive = dutalive && Device.luxisalive()
 
                 if dutalive && size(finalout,1) >= floor(Int64, t_record * rate) 
                     info("recording seems to be ok for file length")
@@ -392,8 +412,8 @@ function auto(taskjsonfile)
                     sleep(expback)
                     expback = 2expback
                     if expback >= 64
-                        dutalive = false
                         complete = true
+                        dutalive = false
                     end
                 else    
                     warn("device seems dead, redo the task")

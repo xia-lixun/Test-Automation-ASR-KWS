@@ -1270,7 +1270,7 @@ using SHA
         result = Array{Tuple{String, Float64, Float64},1}()
         open(file, "r") do fid
             x = ""
-            while !ismatch(Regex("intervals \[[0-9]+\]:"), x)
+            while !ismatch(Regex("intervals: size = "), x)
                 x = readline(fid)
             end
 
@@ -1279,7 +1279,9 @@ using SHA
                 xmin = readline(fid)
                 xmax = readline(fid)
                 text = readline(fid)
-                !isempty(text[21:end-1]) && push!(result, (text[21:end-1], parse(Float64, xmin[20:end]), parse(Float64, xmax[20:end])))
+                if !isempty(text[21:end-2])
+                    push!(result, (text[21:end-2], parse(Float64, xmin[20:end]), parse(Float64, xmax[20:end])))
+                end
             end
         end
         result
