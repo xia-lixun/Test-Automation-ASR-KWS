@@ -1,6 +1,6 @@
 {
     "Project": "Samsung LUX",
-    "Version": "0.0.1-alpha+b1",
+    "Version": "0.0.1-beta+b1",
     "Sample Rate": 48000,
     "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
     "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180606.mat",
@@ -18,7 +18,9 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 51
+                    "Level(dBA)": 51,
+                    "Calibration Start(sec)": 5.5,
+                    "Calibration Stop(sec)": 6.611
                 }
             ],
 
@@ -26,12 +28,16 @@
                 "Source": "",
                 "Port": [3,4,5,6],
                 "Level(dBA)": 57,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
             "Echo": {
                 "Source": "",
                 "Level(dBA)": 75,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
@@ -55,7 +61,9 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 61
+                    "Level(dBA)": 61,
+                    "Calibration Start(sec)": 5.5,
+                    "Calibration Stop(sec)": 6.611
                 }
             ],
 
@@ -63,12 +71,16 @@
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Noise\\QA_Noise_Babble_13m20s_48k.wav",
                 "Port": [3,4,5,6],
                 "Level(dBA)": 57,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
             "Echo": {
                 "Source": "",
                 "Level(dBA)": 70,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
@@ -92,7 +104,9 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 55
+                    "Level(dBA)": 55,
+                    "Calibration Start(sec)": 5.5,
+                    "Calibration Stop(sec)": 6.611
                 }
             ],
 
@@ -100,12 +114,16 @@
                 "Source": "",
                 "Port": [3,4,5,6],
                 "Level(dBA)": 57,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
             "Echo": {
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Music\\Music_5Gerne_Mixed_13m20s_48k.wav",
                 "Level(dBA)": 70,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
@@ -129,7 +147,9 @@
                     "Distance(mm)": 500,
                     "Port": 7,
                     "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                    "Level(dBA)": 67
+                    "Level(dBA)": 67,
+                    "Calibration Start(sec)": 5.5,
+                    "Calibration Stop(sec)": 6.611
                 }
             ],
 
@@ -137,12 +157,16 @@
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Noise\\QA_Noise_Microwave_13m20s_48k.wav",
                 "Port": [3,4,5,6],
                 "Level(dBA)": 51,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 
             "Echo": {
                 "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\Music\\Music_5Gerne_Mixed_13m20s_48k.wav",
                 "Level(dBA)": 75,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
                 "Position": "10mm above DUT"
             },
 

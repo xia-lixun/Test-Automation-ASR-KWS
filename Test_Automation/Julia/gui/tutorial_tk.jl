@@ -5,6 +5,27 @@
 using Tk
 
 
+
+function demo_radiobutton(list)
+
+    w = Toplevel("Serial Port Configuration")
+    f = Frame(w)
+    pack(f, expand=true, fill="both")
+
+    l  = Label(f, "Serial ports found on this machine:")
+    rb = Radio(f, list)
+    map(u -> pack(u, anchor="w"), (l, rb)) 
+
+    Messagebox(title="Action", message="Please select serial port for turntable!")
+    tick = get_value(rb)
+    destroy(w)
+    tick
+end
+
+
+
+
+
 function demo_checkbutton()
 
     w = Toplevel("Project Blahblah")
@@ -26,11 +47,11 @@ end
 
 function demo_radiobutton()
 
-    w = Toplevel()
+    w = Toplevel("Serial Port Configuration")
     f = Frame(w)
     pack(f, expand=true, fill="both")
 
-    l  = Label(f, "Which do you prefer?")
+    l  = Label(f, "Please select port for turntable:")
     rb = Radio(f, ["apples", "oranges"])
     b  = Button(f, "ok")
     map(u -> pack(u, anchor="w"), (l, rb, b))     ## pack in left to right

@@ -15,6 +15,7 @@ using JSON
 using MAT
 using Plots
 using WAV
+import Tk
 include("validate.jl")
 
 
@@ -26,7 +27,7 @@ function auto(taskjsonfile)
 
     # reading parameters
     conf = JSON.parsefile(taskjsonfile)
-    assert(VersionNumber(conf["Version"]) == v"0.0.1-alpha+b1")
+    assert(VersionNumber(conf["Version"]) == v"0.0.1-beta+b1")
 
     fs = conf["Sample Rate"]
     function populate_mouth()
@@ -74,9 +75,7 @@ function auto(taskjsonfile)
     info("soundcard i/o max: $(sndin_max)/$(sndout_max)")
 
     # check serial port for turntable
-    info("serial ports available: $(Turntable.device())")
-    info("please select:")
-    rs232 = readline()
+    rs232 = comportsel_radiobutton(Turntable.device())
     Turntable.set_origin(rs232)
 
 
@@ -94,16 +93,15 @@ function auto(taskjsonfile)
     # if time check fails do level calibration update
     if milli_piston >= Dates.Millisecond(Dates.Day(1)) || milli_piezo >= Dates.Millisecond(Dates.Day(1))
 
-        info("please tether 42AA to reference mic, when ready hit any key to proceed...")
-        readline()
+        Messagebox(title="Action", message="Please tether 42AA to reference mic, when ready press ok")
         snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piston)
         display(plot(snap))
-        info("please tether 42AB to reference mic, when ready hit any key to proceed...")
-        readline()
+
+        Messagebox(title="Action", message="Please tether 42AB to reference mic, when ready press ok")
         snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piezo)
         display(plot(snap))
-        info("level calibration data updated, please restore mic back to position, when ready hit any key to proceed...")
-        readline()
+
+        Messagebox(title="Info", message="Level calibration data updated, please restore mic back to position, then press ok")
     end
 
     # [1.1]
@@ -302,8 +300,8 @@ function auto(taskjsonfile)
 
             # ----[2.4]----
             # level calibration of mouth and noise speakers
-            t0 = round(Int64, 5.5fs)
-            t1 = round(Int64, 6.611fs)
+            t0 = round(Int64, i["Mouth"][mouhot]["Calibration Start(sec)"] * fs)
+            t1 = round(Int64, i["Mouth"][mouhot]["Calibration Stop(sec)"] * fs)
             speech_eq_calib = [speech_eq[t0:t1,1]; speech_eq[t0:t1,1]; speech_eq[t0:t1,1]]
 
             sndmix_spk = zeros(1, sndout_max)
@@ -313,8 +311,8 @@ function auto(taskjsonfile)
             info("speech_eq level calibrated")
 
             if !isempty(i["Noise"]["Source"])
-                t0 = round(Int64, 60fs)
-                t1 = round(Int64, 120fs)
+                t0 = round(Int64, i["Noise"]["Calibration Start(sec)"] * fs)
+                t1 = round(Int64, i["Noise"]["Calibration Stop(sec)"] * fs)
                 noise_eq_calib = noise_eq[t0:t1, :]
 
                 sndmix_spk = zeros(n_ldspk, sndout_max)
@@ -336,8 +334,8 @@ function auto(taskjsonfile)
                 assert(size(echo,2) == 2)
                 assert(Int64(rate) == fs)
 
-                t0 = round(Int64, 60fs)
-                t1 = round(Int64, 120fs)
+                t0 = round(Int64, i["Echo"]["Calibration Start(sec)"] * fs)
+                t1 = round(Int64, i["Echo"]["Calibration Stop(sec)"] * fs)
                 echo_calib = echo[t0:t1, :]
                 
                 devmix_spk = eye(2)
@@ -451,6 +449,21 @@ end
 
 
 
+function comportsel_radiobutton(list)
+    
+    w = Tk.Toplevel("Serial Port Configuration")
+    f = Tk.Frame(w)
+    Tk.pack(f, expand=true, fill="both")
+
+    l  = Tk.Label(f, "Serial ports found on this machine:")
+    rb = Tk.Radio(f, list)
+    map(u -> Tk.pack(u, anchor="w"), (l, rb)) 
+
+    Tk.Messagebox(title="Action", message="Please select COM for turntable!")
+    tick = Tk.get_value(rb)
+    Tk.destroy(w)
+    tick
+end
 
 
 
