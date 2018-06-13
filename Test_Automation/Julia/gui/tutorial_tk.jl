@@ -6,6 +6,30 @@ using Tk
 
 
 
+function demo_progressbar_dyn()
+    w = Toplevel("foobar")
+    f = Frame(w)
+    pack(f, expand=true, fill="both")
+
+    p = Progressbar(f)
+    t = Label(f, "Progress 0%")
+    grid(p, 1,1,sticky="ew")
+    grid(t, 1,2,sticky="nw")
+
+    bytes = 0
+    while bytes < 1024
+        sleep(1)
+        bytes += 100
+        per = min(100, round(Int64, 100 * (bytes/1024)))
+        set_value(p, per)
+        t[:text] = "Progress $(per)%"
+    end
+    destroy(w)
+end
+
+
+
+
 function demo_radiobutton(list)
 
     w = Toplevel("Serial Port Configuration")
