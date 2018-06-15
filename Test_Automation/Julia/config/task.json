@@ -1,9 +1,10 @@
 {
     "Project": "Samsung LUX",
-    "Version": "0.0.1-beta+b1",
+    "Version": "0.0.1-beta+b2",
     "Sample Rate": 48000,
     "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
     "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180606.mat",
+    "Clock Drift Compensation": true,
 
     "Task":[
         {

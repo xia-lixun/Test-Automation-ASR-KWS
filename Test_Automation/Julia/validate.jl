@@ -389,3 +389,51 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
 
     return source_gain, dba_piston[1]
 end
+
+
+
+# mixspk = zeros(1,2)
+# mixspk[1,1] = 1.0
+# mixmic = zeros(9,1)
+# mixmic[9,1] = 1.0
+function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Float64}; fs_snd::Int = 48000)
+
+    # 
+    #   +--------+--------+--------+--------+--------+ => 5 samples in digital domain played via dut's speaker, whose sample interval is Td.
+    #   +-----+-----+-----+-----+-----+-----+-----+--- => 7 samples captured by the standard sampler of the soundcard,
+    #  
+    #   5 x Td ≈ 7 x Tr
+    #   or formly, N/Fd ≈ Nm / Fr
+    #   Fd ≈ N / Nm x Fr
+    #   Fd/Fr ≈ N/Nm = 5/7  
+    #
+    assert(nprocs() > 1)
+    wpid = workers()
+    fs = fs_snd
+    info("start measure clock drift:")
+
+    # fileio -> asio
+    sync = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 1, fs)
+    info("  sync samples: $(length(sync))")
+    period = [zeros(100fs,1); sync]
+    signal = [zeros(3fs,1); sync; period; period; period; period; period; period; period; period; zeros(3fs,1)]
+    info("  signal train formed")
+
+    Device.luxinit()
+    playback = "dutplayback.wav"
+    wavwrite(Device.mixer(signal, devmix_spk), playback, Fs=fs, nbits=32)
+    info("  filesize: $(filesize("dutplayback.wav")/1024/1024) MiB")
+    Device.luxplay(playback)
+    info("  singal pushed to device")
+
+    playdone = remotecall(Device.luxplay, wpid[1])
+    r = SoundcardAPI.record(size(signal,1), sndmix_mic, fs)
+    fetch(playdone)
+    wavwrite(r, "clockdrift.wav", Fs=fs, nbits=32)
+    info("  recording written to clockdrift.wav")
+
+    lbs,pk,pkf,y = LibAudio.extract_symbol_and_merge(r[:,1], sync, 9, dither=-180)
+    (diff(pkf), length(sync)+100fs)
+    # N = length(sync)+100fs
+    # Nm = median(diff(pkf))
+end

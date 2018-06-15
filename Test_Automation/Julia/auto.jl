@@ -27,7 +27,7 @@ function auto(taskjsonfile)
 
     # reading parameters
     conf = JSON.parsefile(taskjsonfile)
-    assert(VersionNumber(conf["Version"]) == v"0.0.1-beta+b1")
+    assert(VersionNumber(conf["Version"]) == v"0.0.1-beta+b2")
 
     fs = conf["Sample Rate"]
     function populate_mouth()
@@ -260,7 +260,9 @@ function auto(taskjsonfile)
                 Heartbeat.dutreset_client()
                 sleep(10)
             end
-            info("dut reboot ok")
+            Device.luxinit()
+            Device.luxclear()
+            info("dut reboot, init and clear ok")
 
             # ----[2.3]----
             # apply eq to speech and noise files, peak normalize to avoid clipping
