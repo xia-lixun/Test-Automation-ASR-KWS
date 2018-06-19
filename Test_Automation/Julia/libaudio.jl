@@ -959,7 +959,7 @@ using SHA
 
     # signal is either ::Vector{Float64} or ::Matrix{Float64}
     # the result will be dimensionally raised up to matrix
-    function syncsymbol_encode(signal, t_context, syncsymbol::Vector{Float64}, t_symboldecay, fs) # -> Matrix{Float64}
+    function syncsymbol_encode(signal, t_context, syncsymbol_fn, syncsymbol_g, t_symboldecay, fs) # -> Matrix{Float64}
         # % this function encode the content of the stimulus for playback if sync
         # % (guard) symbols are needed for asynchronous operations.
         # %
@@ -977,21 +977,27 @@ using SHA
         # % we now have a stimulus of pre-silence of 3 seconds, guard chirp of
         # % length 1 second, chirp decaying marging of 2 seconds, a measurement
         # % of random noise.
+        syncsymbol::Vector{Float64} = syncsymbol_fn(220, 8000, 1, fs)
+        syncsymbol = 10^(syncsymbol_g/20) * syncsymbol
+
         ch = size(signal, 2)
         tmp, active = findmax(sum(signal.^2,1))
         # only add the sync symbol to the highest-energy channel
         
-        t_switch = zeros(round(Int64, t_context * fs), ch)
-        t_symbol = zeros(size(syncsymbol,1), ch)
-        t_symbol[:, active] = syncsymbol
-        t_decay = zeros(round(Int64, t_symboldecay * fs), ch)
+        x_switch = zeros(round(Int64, t_context * fs), ch)
+        x_symbol = zeros(size(syncsymbol,1), ch)
+        x_symbol[:, active] = syncsymbol
+        x_decay = zeros(round(Int64, t_symboldecay * fs), ch)
         
-        y = [t_switch; t_symbol; t_decay; signal; t_symbol; t_decay]
+        y = [x_switch; x_symbol; x_decay; signal; x_symbol; x_decay]
     end
 
 
 
-    function syncsymbol_decode(encoded::Matrix{Float64}, decode_len::Int, syncsymbol::Vector{Float64}, t_symboldecay, fs)
+    function syncsymbol_decode(encoded::Matrix{Float64}, syncsymbol_fn, t_symboldecay, t_essd, fs)
+        # encoded is captured with sample rate fs
+
+        syncsymbol::Vector{Float64} = syncsymbol_fn(220, 8000, 1, fs)
 
         n = size(encoded,2)
         location = zeros(Int64,2,n)
@@ -1003,7 +1009,7 @@ using SHA
         end
 
         delta_measure = location[2,:] - location[1,:]
-        delta_theory = length(syncsymbol) + round(Int64, t_symboldecay * fs) + decode_len
+        delta_theory = length(syncsymbol) + round(Int64, t_symboldecay * fs) + round(Int64, t_essd * fs)
         relat = location[1,:] - minimum(location[1,:])
         info(delta_measure)
         info(delta_theory)
@@ -1011,7 +1017,7 @@ using SHA
 
         #lb = lbs[1] + size(syncsymbol,1) + round(Int64, t_symboldecay * fs)
         #rb = lbs[2] - 1
-        location
+        location[1,:] + length(syncsymbol) + round(Int64, t_symboldecay * fs)
     end
 
 

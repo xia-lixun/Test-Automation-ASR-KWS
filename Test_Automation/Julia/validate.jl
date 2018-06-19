@@ -55,16 +55,16 @@ end
 # note: adjust syncatten for the level of the sync symbol, if too high mixer would prompt with mic clipping error!
 # note: use long t_ess when possible, for the build-up of the stimulus energy
 # note: use long t_decay if room or system dunamics are reverberant
-# note: [b,a] is prepending transfer function for filter verification
+# note: eq = [(b,a),(b,a)...] is prepending transfer function for filter verification, must be designed according to fs or fsd based on mode
 # note: mode[1] is the physical device for playback, mode[2] is the physical device for recording
 function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     fs = 48000,
+    fd = 47999.53892134,
     f0 = 22, 
     f1 = 22000, 
     t_ess = 10, 
     t_decay = 3,
-    b = [1.0],
-    a = [1.0],
+    eq = [([1.0],[1.0])],
     atten = -6,
     syncatten = -18,
     mode = (:asio, :asio))
@@ -79,53 +79,86 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     f0 < 1.0 && (f0 = 1.0)
     f1 > fs/2 && (f1 = fs/2)
 
-    # generate ess
-    ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
-    m = length(ess)
-    n = round(Int64, t_decay * fs)
-    essd = zeros(m+n, 1)
-    essd[1:m, 1] = ess
-
-    # eq filter and attenuate, we do not do clipping check as it is duty of the mixer
-    essdf = 10^(atten/20) * LibAudio.tf_filter(b, a, essd)
-
+    
 
     if all(x->x==:asio, mode)
 
-        mic = SoundcardAPI.playrecord(essdf, mixspk, mixmic, fs)
-    
+        ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
+        m = length(ess)
+        n = round(Int64, t_decay * fs)
+        essd = zeros(m+n, 1)
+        essd[1:m,1] = ess
+        for i in eq
+            essd = LibAudio.tf_filter(i[1], i[2], essd)  # the mixer will do clipping check
+        end
+        essd = 10^(atten/20) * essd
+        mic = SoundcardAPI.playrecord(essd, mixspk, mixmic, fs)
+        return LibAudio.impresp(ess, n, f0, f1, fs, mic)
+
+
     elseif all(x->x==:simulation, mode)
+
+        ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
+        m = length(ess)
+        n = round(Int64, t_decay * fs)
+        essd = zeros(m+n, 1)
+        essd[1:m,1] = ess
+        for i in eq
+            essd = LibAudio.tf_filter(i[1], i[2], essd)  
+        end
 
         ellip_b = [0.165069005881145, 0.064728220211450, 0.237771476924023, 0.237771476924022, 0.064728220211450, 0.165069005881146]
         ellip_a = [1.0, -1.544070855644442, 2.377072040756431, -1.638501402700271, 0.950992608325718, -0.210354984704200]
-        mic = LibAudio.tf_filter(ellip_b, ellip_a, essdf)
+        mic = LibAudio.tf_filter(ellip_b, ellip_a, essd)
         ym = median(abs.(mic))
         mic[mic.>ym] = ym
+        return LibAudio.impresp(ess, n, f0, f1, fs, mic)
 
-    else
-        sync = 10^(syncatten/20) * LibAudio.syncsymbol(220, 8000, 0.5, fs)
+
+    elseif all(x->x==:fileio, mode)
+
+        ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fd)
+        m = length(ess)
+        n = round(Int64, t_decay * fd)
+        essd = zeros(m+n, 1)
+        essd[1:m,1] = ess
+        for i in eq
+            essd = LibAudio.tf_filter(i[1], i[2], essd)  
+        end
+        essd = 10^(atten/20) * essd
+        sync = 10^(syncatten/20) * LibAudio.syncsymbol(220, 8000, 0.5, fd)
         contextswitch = 5
         syncdecay = 3
-        essdfa = LibAudio.syncsymbol_encode(essdf, contextswitch, sync, syncdecay, fs)
+        essda = LibAudio.syncsymbol_encode(essd, contextswitch, sync, syncdecay, fd)
+
+        capture = ["mic_8ch_16k_s16_le"]
+        playback = "dutplaybackexpsinesweep.wav"
+        wavwrite(Device.mixer(essda, mixspk), playback, Fs=fs, nbits=32)
+
         Device.luxinit()
+        Device.luxplayrecord(playback, ceil(size(essda,1)/fd), capture)
+        Device.luxplayrecord(capture)
 
-        if all(x->x==:fileio, mode)
+                ## todo: retrieve the 48000 raw mic signal
+                Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
+                raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
+                r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
 
-            playback = "dutplayback.wav"
-            wavwrite(Device.mixer(essdfa, mixspk), playback, Fs=fs, nbits=32)
+        # decode async signal
+        p = size(essd,1)
+        c = size(r,2)
+        symloc = LibAudio.syncsymbol_decode(r, p, sync, syncdecay, fd)
 
-            capture = ["mic_8ch_16k_s16_le"]
-            Device.luxplayrecord(playback, size(essdfa,1)/fs, capture)
-            Device.luxplayrecord(capture)
+        hyperthetical_tolerance = 2048
+        mic = zeros(p, c)
+        for i = 1:c
+            loc = symloc[1,i] + size(sync,1) + round(Int64, syncdecay * fd) - hyperthetical_tolerance
+            mic[:,i] = r[loc:loc+p-1, i]
+        end
+        return LibAudio.impresp(ess, n, f0, f1, fd, mic)
 
-            Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
-            raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
-            r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
 
-            #run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
-            #r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)
-
-        elseif mode[1] == :asio && mode[2] == :fileio
+    elseif mode[1] == :asio && mode[2] == :fileio
 
             # prepare device side
             capture = ["mic_8ch_16k_s16_le"]
@@ -148,36 +181,50 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             # run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
             # r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)                
 
-        elseif mode[1] == :fileio && mode[2] == :asio
 
-            # prepare the device
-            playback = "dutplayback.wav"
-            wavwrite(Device.mixer(essdfa, mixspk), playback, Fs=fs, nbits=32)
-            Device.luxplay(playback)
+    elseif mode[1] == :fileio && mode[2] == :asio
 
-            playdone = remotecall(Device.luxplay, wpid[1])
-            r = SoundcardAPI.record(size(essdfa,1), mixmic, fs)
-            fetch(playdone)
-
-        else
-            error("mode: (:asio,:asio) | (:asio,:fileio) | (:fileio,:asio) | (:fileio,:fileio) | (:simulation,:simulation)")
+        ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fd)
+        m = length(ess)
+        n = round(Int64, t_decay * fd)
+        essd = zeros(m+n, 1)
+        essd[1:m,1] = ess
+        for i in eq
+            essd = LibAudio.tf_filter(i[1], i[2], essd)  
         end
+        essd = 10^(atten/20) * essd
+        t_essd = length(essd) / fd
+        contextswitch = 5
+        syncdecay = 3
+        essda = LibAudio.syncsymbol_encode(essd, contextswitch, LibAudio.syncsymbol, syncatten, syncdecay, fd)
 
+        playback = "dutplaybackexpsinesweep.wav"
+        wavwrite(Device.mixer(essda, mixspk), playback, Fs=fs, nbits=32)
+        Device.luxplay(playback)
+
+                playdone = remotecall(Device.luxplay, wpid[1])
+                r = SoundcardAPI.record(size(essda,1), mixmic, fs)
+                fetch(playdone)
 
         # decode async signal
-        p = size(essdf,1)
+        p = size(round(Int64, t_essd * fs),1)
         c = size(r,2)
-        symloc = LibAudio.syncsymbol_decode(r, p, sync, syncdecay, fs)
-
+        loc = LibAudio.syncsymbol_decode(r, LibAudio.syncsymbol, syncdecay, t_essd, fs)
         hyperthetical_tolerance = 2048
         mic = zeros(p, c)
         for i = 1:c
-            loc = symloc[1,i] + size(sync,1) + round(Int64, syncdecay * fs) - hyperthetical_tolerance
-            mic[:,i] = r[loc:loc+p-1, i]
+            l = loc[i] - hyperthetical_tolerance
+            mic[:,i] = r[l:l+p-1,i]
         end
+        return LibAudio.impresp(LibAudio.sinesweep_exp(f0, f1, t_ess, fs), round(Int64, t_decay * fs), f0, f1, fs, mic)
+        
+    else
+        error("mode: (:asio,:asio) | (:asio,:fileio) | (:fileio,:asio) | (:fileio,:fileio) | (:simulation,:simulation)")
     end
 
-    fund, harm, dirac, total = LibAudio.impresp(ess, n, f0, f1, fs, mic)
+
+
+    
 end 
 
 
