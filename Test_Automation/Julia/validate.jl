@@ -103,7 +103,7 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
         mic[mic.>ym] = ym
 
     else
-        sync = 10^(syncatten/20) * LibAudio.syncsymbol(220, 8000, 1, fs)
+        sync = 10^(syncatten/20) * LibAudio.syncsymbol(220, 8000, 0.5, fs)
         contextswitch = 5
         syncdecay = 3
         essdfa = LibAudio.syncsymbol_encode(essdf, contextswitch, sync, syncdecay, fs)
@@ -396,7 +396,7 @@ end
 # mixspk[1,1] = 1.0
 # mixmic = zeros(9,1)
 # mixmic[9,1] = 1.0
-function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Float64}; fs_snd::Int = 48000)
+function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Float64}; repeat = 3, fs = 48000)
 
     # 
     #   +--------+--------+--------+--------+--------+ => 5 samples in digital domain played via dut's speaker, whose sample interval is Td.
@@ -409,14 +409,13 @@ function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Floa
     #
     assert(nprocs() > 1)
     wpid = workers()
-    fs = fs_snd
     info("start measure clock drift:")
 
     # fileio -> asio
-    sync = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 1, fs)
+    sync = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 0.5, fs)
     info("  sync samples: $(length(sync))")
-    period = [zeros(100fs,1); sync]
-    signal = [zeros(3fs,1); sync; period; period; period; period; period; period; period; period; zeros(3fs,1)]
+    period = [zeros(round(Int64,100fs),1); sync]
+    signal = [zeros(round(Int64,3fs),1); sync; repmat(period,repeat,1); zeros(round(Int64,3fs),1)]
     info("  signal train formed")
 
     Device.luxinit()
@@ -432,8 +431,14 @@ function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Floa
     wavwrite(r, "clockdrift.wav", Fs=fs, nbits=32)
     info("  recording written to clockdrift.wav")
 
-    lbs,pk,pkf,y = LibAudio.extract_symbol_and_merge(r[:,1], sync, 9, dither=-180)
-    (diff(pkf), length(sync)+100fs)
-    # N = length(sync)+100fs
-    # Nm = median(diff(pkf))
+    # syncs = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 1, fss)
+    # info("  syncs samples: $(length(syncs))")
+    # note: sync is approximately invariant due to its short length
+    lbs,pk,pkf,y = LibAudio.extract_symbol_and_merge(r[:,1], sync, repeat+1, dither=-180)
+
+    pkfd = diff(pkf)
+    chrodrift_100sec = ((pkfd[end] - pkfd[1]) / (repeat-1))/fs
+    freqdrift_100sec = (size(period,1) - median(pkfd))/fs
+    
+    (fs * size(period,1)/median(pkfd), freqdrift_100sec, chrodrift_100sec)
 end

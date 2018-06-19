@@ -93,15 +93,15 @@ function auto(taskjsonfile)
     # if time check fails do level calibration update
     if milli_piston >= Dates.Millisecond(Dates.Day(1)) || milli_piezo >= Dates.Millisecond(Dates.Day(1))
 
-        Messagebox(title="Action", message="Please tether 42AA to reference mic, when ready press ok")
+        Tk.Messagebox(title="Action", message="Please tether 42AA to reference mic, when ready press ok")
         snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piston)
         display(plot(snap))
 
-        Messagebox(title="Action", message="Please tether 42AB to reference mic, when ready press ok")
+        Tk.Messagebox(title="Action", message="Please tether 42AB to reference mic, when ready press ok")
         snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piezo)
         display(plot(snap))
 
-        Messagebox(title="Info", message="Level calibration data updated, please restore mic back to position, then press ok")
+        Tk.Messagebox(title="Info", message="Level calibration data updated, please restore mic back to position, then press ok")
     end
 
     # [1.1]
@@ -116,6 +116,7 @@ function auto(taskjsonfile)
     end
     dontcare, noisefloor = levelcalibrate_dba(zeros(5fs,n_ldspk+n_mouth), 0, sndmix_spk, sndmix_mic, fs, 40, conf["Level Calibration"])
     noisefloor > 40 && error("room is too noisy? abort")
+
 
 
     
@@ -186,6 +187,19 @@ function auto(taskjsonfile)
         # conditions to proceed
     end
     
+
+    # [1.3.1]
+    # check clock drift of the device under test
+    fsd = 0.0
+    if conf["Clock Drift Compensation"]
+        info("measure device sample rate in precision:")
+        devmix_spk = zeros(1,2)
+        devmix_spk[1,1] = 1.0
+        fsd, freqdrift, chrodrift = clockdrift_measure(devmix_spk, sndmix_mic, repeat=3)
+        info("time drift of dut: $(freqdrift)/100 sec")
+        info("chronic drift of dut: $(chrodrift)/100 sec")
+        info("dut freqency: $(fsd) samples per second")
+    end
 
     # [1.3]
     # check dut transfer function from dut speakers to reference mic

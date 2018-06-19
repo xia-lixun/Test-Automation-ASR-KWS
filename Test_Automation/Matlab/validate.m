@@ -199,8 +199,8 @@ f_anchor = 33; %Hz
 h = eq_calibration([0,0,0,0,0,1,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, 16000, -26);
 add_equalization_filters(h, 'LoudSPK-4');
 %%
-f_anchor = 33; %Hz
-h = eq_calibration([0,0,0,0,0,0,1,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, 16000, -26);
+f_anchor = 200; %Hz
+h = eq_calibration([0,0,0,0,0,0,1,0,0,0,0,0], [0,0,0,0,0,0,0,0,1].', f_anchor, 100, 22000, -30);
 add_equalization_filters(h, 'Mouth-05');
 %%
 f_anchor = 70; %Hz
