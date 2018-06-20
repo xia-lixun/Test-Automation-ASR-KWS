@@ -59,7 +59,7 @@ end
 # note: mode[1] is the physical device for playback, mode[2] is the physical device for recording
 function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     fs = 48000,
-    fd = 47999.53892134,
+    fd = 47999.52152805812,
     f0 = 22, 
     f1 = 22000, 
     t_ess = 10, 
@@ -126,10 +126,10 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             essd = LibAudio.tf_filter(i[1], i[2], essd)  
         end
         essd = 10^(atten/20) * essd
-        sync = 10^(syncatten/20) * LibAudio.syncsymbol(220, 8000, 0.5, fd)
+        t_essd = length(essd) / fd
         contextswitch = 5
         syncdecay = 3
-        essda = LibAudio.syncsymbol_encode(essd, contextswitch, sync, syncdecay, fd)
+        essda = LibAudio.syncsymbol_encode(essd, contextswitch, LibAudio.syncsymbol, syncatten, syncdecay, fd)
 
         capture = ["mic_8ch_16k_s16_le"]
         playback = "dutplaybackexpsinesweep.wav"
@@ -147,25 +147,39 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
         # decode async signal
         p = size(essd,1)
         c = size(r,2)
-        symloc = LibAudio.syncsymbol_decode(r, p, sync, syncdecay, fd)
+        loc = LibAudio.syncsymbol_decode(r, LibAudio.syncsymbol, syncdecay, t_essd, fd)
 
         hyperthetical_tolerance = 2048
         mic = zeros(p, c)
         for i = 1:c
-            loc = symloc[1,i] + size(sync,1) + round(Int64, syncdecay * fd) - hyperthetical_tolerance
-            mic[:,i] = r[loc:loc+p-1, i]
+            l = loc[i] - hyperthetical_tolerance
+            mic[:,i] = r[l:l+p-1, i]
         end
         return LibAudio.impresp(ess, n, f0, f1, fd, mic)
 
 
     elseif mode[1] == :asio && mode[2] == :fileio
 
+        ess = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
+        m = length(ess)
+        n = round(Int64, t_decay * fs)
+        essd = zeros(m+n, 1)
+        essd[1:m,1] = ess
+        for i in eq
+            essd = LibAudio.tf_filter(i[1], i[2], essd)  
+        end
+        essd = 10^(atten/20) * essd
+        t_essd = length(essd) / fs
+        contextswitch = 5
+        syncdecay = 3
+        essda = LibAudio.syncsymbol_encode(essd, contextswitch, LibAudio.syncsymbol, syncatten, syncdecay, fs)
+
             # prepare device side
             capture = ["mic_8ch_16k_s16_le"]
-            Device.luxrecord(size(essdfa,1)/fs, capture)
+            Device.luxrecord(ceil(size(essda,1)/fs), capture)
 
             # prepare souncard side
-            dat = SoundcardAPI.mixer(Float32.(essdfa), Float32.(mixspk))
+            dat = SoundcardAPI.mixer(Float32.(essda), Float32.(mixspk))
             pcm = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
             
             # playdone = remotecall(SoundcardAPI.play, wpid[1], essdfa, mixspk, fs) # latency is high
@@ -178,8 +192,20 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
             r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
 
-            # run(`sox $(capture[1]).wav -r $(fs) mic_8ch_48k_s16_le.wav`)
-            # r = Device.mixer(wavread("mic_8ch_48k_s16_le.wav")[1], mixmic)                
+        # decode async signal
+        ess_mt = LibAudio.sinesweep_exp(f0, f1, t_ess, fd)
+        n_mt = round(Int64, t_decay * fd)  
+
+        p = round(Int64, t_essd * fd)           
+        c = size(r,2)
+        loc = LibAudio.syncsymbol_decode(r, LibAudio.syncsymbol, syncdecay, t_essd, fd)
+        hyperthetical_tolerance = 2048
+        mic = zeros(p, c)
+        for i = 1:c
+            l = loc[i] - hyperthetical_tolerance
+            mic[:,i] = r[l:l+p-1,i]
+        end
+        return LibAudio.impresp(ess_mt, n_mt, f0, f1, fd, mic)
 
 
     elseif mode[1] == :fileio && mode[2] == :asio
@@ -193,7 +219,7 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             essd = LibAudio.tf_filter(i[1], i[2], essd)  
         end
         essd = 10^(atten/20) * essd
-        t_essd = length(essd) / fd
+        t_essd = length(essd) / fd  
         contextswitch = 5
         syncdecay = 3
         essda = LibAudio.syncsymbol_encode(essd, contextswitch, LibAudio.syncsymbol, syncatten, syncdecay, fd)
@@ -207,7 +233,10 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
                 fetch(playdone)
 
         # decode async signal
-        p = size(round(Int64, t_essd * fs),1)
+        ess_mt = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
+        n_mt = round(Int64, t_decay * fs)  
+
+        p = round(Int64, t_essd * fs)           
         c = size(r,2)
         loc = LibAudio.syncsymbol_decode(r, LibAudio.syncsymbol, syncdecay, t_essd, fs)
         hyperthetical_tolerance = 2048
@@ -216,7 +245,7 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             l = loc[i] - hyperthetical_tolerance
             mic[:,i] = r[l:l+p-1,i]
         end
-        return LibAudio.impresp(LibAudio.sinesweep_exp(f0, f1, t_ess, fs), round(Int64, t_decay * fs), f0, f1, fs, mic)
+        return LibAudio.impresp(ess_mt, n_mt, f0, f1, fs, mic)
         
     else
         error("mode: (:asio,:asio) | (:asio,:fileio) | (:fileio,:asio) | (:fileio,:fileio) | (:simulation,:simulation)")

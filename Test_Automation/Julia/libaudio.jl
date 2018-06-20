@@ -889,7 +889,20 @@ using SHA
 
 
     # signal: sinesweep_exp signal w/o decay
+    #         it must be at the same sample rate as recording has
     # decay: number of zero samples appending to signal
+    #
+    # note: an example showing clock-drift effect
+    #       x = LibAudio.sinesweep_exp(22, 22000, 10, 47999.5)
+    #       y = LibAudio.sinesweep_exp(22, 22000, 10, 48000.0)
+    #       r = zeros(length(y),1)
+    #       r[:,1] = y
+    #       f1,h1,d1,t1 = LibAudio.impresp(x, length(y)-length(x), 22, 22000, 48000, r)
+    #       f2,h2,d2,t2 = LibAudio.impresp(x, 0, 22, 22000, 48000, r)
+    #       plot(f1)
+    #       plot!(f2)
+    #
+    #       f1 is the "skewed" dirac, which is caused by clock drift.
     function impresp(signal::Vector{Float64}, decay::Int, f0, f1, fs, recording::Matrix{Float64})
 
         kernel = sinesweep_expinv(signal, f0, f1)
@@ -1234,7 +1247,7 @@ using SHA
             if mix_to_mono
                 wavwrite(mean(x,2), p, Fs=fs, nbits=32)
             else
-                wavwrite(x, p, Fs=fs, nbits=32)
+                wavwrite(Int16.(32767x), p, Fs=fs, nbits=16)
             end
             u[i] = size(x, 1)
             println("$i/$n complete")
