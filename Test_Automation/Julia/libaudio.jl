@@ -1224,9 +1224,10 @@ using SHA
     end
 
     # resample entire folder to another while maintain folder structure
-    # 1. need ffmpeg installed as backend
-    # 2. need sox install as resample engine
-    function resample(path_i::String, path_o::String, target_fs; source_type=".wav", mix_to_mono=false)
+    # 1. need ffmpeg installed as backend, support for ogg, mp4 etc. 
+    # 2. need sox install as resample engine, libsox
+    # 3. default save to 16 bit, if savefloat is true then save as 32-bit float
+    function resample(path_i::String, path_o::String, target_fs; source_type=".wav", savefloat=false)
         
         a = list(path_i, t = source_type)
         n = length(a)
@@ -1244,10 +1245,15 @@ using SHA
                     
             x, fs = wavread(p)
             assert(fs == typeof(fs)(target_fs))
-            if mix_to_mono
-                wavwrite(mean(x,2), p, Fs=fs, nbits=32)
+            pk = maximum(x)
+            if pk > 1.0
+                x = x / pk
+                warn("resample: peak = $(pk)")
+            end
+            if savefloat
+                wavwrite(x, p, Fs=fs, nbits=32)
             else
-                wavwrite(Int16.(32767x), p, Fs=fs, nbits=16)
+                wavwrite(round(Int16,32767x), p, Fs=fs, nbits=16)
             end
             u[i] = size(x, 1)
             println("$i/$n complete")
