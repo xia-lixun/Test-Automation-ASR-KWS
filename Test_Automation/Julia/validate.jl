@@ -5,6 +5,7 @@ include("heartbeat.jl")
 include("device.jl")
 include("soundcard_api.jl")
 include("libaudio.jl")
+include("kwsasr.jl")
 
 
 
@@ -27,7 +28,8 @@ function session_open(n)
         remotecall_fetch(include, wpid, "turntable.jl")
         remotecall_fetch(include, wpid, "heartbeat.jl")
         remotecall_fetch(include, wpid, "device.jl")
-        remotecall_fetch(include, wpid, "soundcard_api.jl")        
+        remotecall_fetch(include, wpid, "soundcard_api.jl")
+        remotecall_fetch(include, wpid, "kwsasr.jl")        
     end
     nothing
 end
@@ -59,7 +61,7 @@ end
 # note: mode[1] is the physical device for playback, mode[2] is the physical device for recording
 function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     fs = 48000,
-    fd = 47999.52152805812,
+    fd = 47999.513810916986,
     f0 = 22, 
     f1 = 22000, 
     t_ess = 10, 

@@ -5,7 +5,8 @@
     "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
     "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat",
     "Clock Drift Compensation": true,
-
+    "Score Server IP": "10.80.123.45",
+    
     "Task":[
         {
             "Topic": "Quiet",

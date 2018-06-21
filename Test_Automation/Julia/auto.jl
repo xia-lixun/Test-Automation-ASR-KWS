@@ -190,7 +190,7 @@ function auto(taskjsonfile)
 
     # [1.3.1]
     # check clock drift of the device under test
-    fsd = 0.0
+    fsd = 48000.0
     if conf["Clock Drift Compensation"]
         info("measure device sample rate in precision:")
         devmix_spk = zeros(1,2)
@@ -204,7 +204,7 @@ function auto(taskjsonfile)
     # [1.3]
     # check dut transfer function from dut speakers to reference mic
     devmix_spk = ones(1,2)
-    fu2, ha2, di2, tt2 = impulse_response(devmix_spk, sndmix_mic, fs = fs, t_ess = 10, t_decay = 3, atten = -15, syncatten = -12, mode = (:fileio, :asio))
+    fu2, ha2, di2, tt2 = impulse_response(devmix_spk, sndmix_mic, fs = fs, fd = fsd, t_ess = 10, t_decay = 3, atten = -15, syncatten = -12, mode = (:fileio, :asio))
 
     # display(plot(fu2[1:65536,:]))
     fu2v = abs.(fft(fu2[1:65536,:],1)) / 65536
@@ -225,7 +225,7 @@ function auto(taskjsonfile)
     sndmix_spk[1, conf["Task"][1]["Mouth"][1]["Port"]] = 1.0
     devmix_mic = eye(8)
 
-    fu3, ha3, di3, tt3 = impulse_response(sndmix_spk, devmix_mic, fs = fs, t_ess = 10, t_decay = 3, atten = -18, syncatten = -12, mode = (:asio, :fileio))
+    fu3, ha3, di3, tt3 = impulse_response(sndmix_spk, devmix_mic, fs = fs, fd = fsd, t_ess = 10, t_decay = 3, atten = -18, syncatten = -12, mode = (:asio, :fileio))
 
     # display(plot(fu3[1:65536,:]))
     fu3v = abs.(fft(fu3[1:65536,:],1)) / 65536
@@ -250,8 +250,8 @@ function auto(taskjsonfile)
     mkdir(datpath)
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
 
-
-    for i in conf["Task"]
+    score_future = Array{Future}(length(conf["Task"]))
+    for (seq,i) in enumerate(conf["Task"])
 
         status = false
         dutalive = false
@@ -416,7 +416,7 @@ function auto(taskjsonfile)
                     info("recording seems to be ok for file length")
 
                     refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
-                    mv("record.wav", joinpath(datpath, i["Topic"], "record.wav"), remove_destination=true)
+                    mv("record.wav", joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), remove_destination=true)
                     wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
                     info("results written to /$(datpath)/$(i["Topic"])")            
                     complete = true
@@ -438,16 +438,38 @@ function auto(taskjsonfile)
 
 
         # [2.7]
-        # push results to scoring server
-
-        # [2.8]
-        # fetch results and generate report
+        # push results to scoring server, retrieve the individual report
+        score_future[seq] = remotecall(KwsAsr.score_kws, 
+                                       wid[2], 
+                                       conf["Score Server IP"], 
+                                       joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), 
+                                       joinpath(datpath, i["Topic"]))
     end
     
+    # [2.8]
+    # form the final report based on individual reports
+    finalpath = joinpath(datpath,"report-final.txt")
+    open(finalpath,"w") do ffid
+        for seq = 1:length(conf["Task"])
+            info(fetch(score_future[seq]))
+            s = open(joinpath(datpath, conf["Task"][seq]["Topic"], "report_$(i["Topic"]).txt"), "r") do fid
+                readlines(fid)
+            end
+            for k in s
+                write(ffid, k * "\n")
+            end
+            write(ffid, "====\n")
+        end
+    end
+    info("final report written to $(finalpath)")
 
+    
     session_close()
     nothing
 end
+
+
+
 
 
 
