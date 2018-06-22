@@ -61,14 +61,14 @@ end
 # note: mode[1] is the physical device for playback, mode[2] is the physical device for recording
 function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
     fs = 48000,
-    fd = 47999.513810916986,
+    fd = 48000.0,
     f0 = 22, 
     f1 = 22000, 
     t_ess = 10, 
     t_decay = 3,
     eq = [([1.0],[1.0])],
     atten = -6,
-    syncatten = -18,
+    syncatten = -10,
     mode = (:asio, :asio))
 
 
@@ -133,18 +133,16 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
         syncdecay = 3
         essda = LibAudio.syncsymbol_encode(essd, contextswitch, LibAudio.syncsymbol, syncatten, syncdecay, fd)
 
-        capture = ["mic_8ch_16k_s16_le"]
         playback = "dutplaybackexpsinesweep.wav"
         wavwrite(Device.mixer(essda, mixspk), playback, Fs=fs, nbits=32)
-
         Device.luxinit()
-        Device.luxplayrecord(playback, ceil(size(essda,1)/fd), capture)
-        Device.luxplayrecord(capture)
+        Device.luxplayrecord(playback, ceil(size(essda,1)/fd), fetchall=true)
+        Device.luxplayrecord(fetchall=true)
 
-                ## todo: retrieve the 48000 raw mic signal
-                Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
-                raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
-                r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
+        Device.raw2wav_16bit("./capture/mic_pcm_before_resample_8ch_48000.raw", size(mixmic,1), 48000, "./capture/mic_pcm_before_resample_8ch_48000.wav")
+        r,rate = wavread("./capture/mic_pcm_before_resample_8ch_48000.wav")
+        # raw, rate = wavread("$(capture[1]).wav")
+        # r = LibAudio.resample_vhq(Device.mixer(raw, mixmic), rate, fs)
 
         # decode async signal
         p = size(essd,1)
@@ -176,23 +174,21 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
         syncdecay = 3
         essda = LibAudio.syncsymbol_encode(essd, contextswitch, LibAudio.syncsymbol, syncatten, syncdecay, fs)
 
-            # prepare device side
-            capture = ["mic_8ch_16k_s16_le"]
-            Device.luxrecord(ceil(size(essda,1)/fs), capture)
+            Device.luxinit()
+            Device.luxrecord(ceil(size(essda,1)/fs), fetchall=true)
 
-            # prepare souncard side
             dat = SoundcardAPI.mixer(Float32.(essda), Float32.(mixspk))
             pcm = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
             
             # playdone = remotecall(SoundcardAPI.play, wpid[1], essdfa, mixspk, fs) # latency is high
             playdone = remotecall(SoundcardAPI.play, wpid[1], size(dat), pcm, fs)  # latency is low
-            Device.luxrecord(capture)
+            Device.luxrecord(fetchall=true)
             fetch(playdone)
 
-            # post processing
-            Device.raw2wav_16bit("$(capture[1]).raw", size(mixmic,1), 16000, "$(capture[1]).wav")
-            raw_fileio, fs_fileio = wavread("$(capture[1]).wav")
-            r = LibAudio.resample_vhq(Device.mixer(raw_fileio, mixmic), fs_fileio, fs)
+            Device.raw2wav_16bit("./capture/mic_pcm_before_resample_8ch_48000.raw", size(mixmic,1), 48000, "./capture/mic_pcm_before_resample_8ch_48000.wav")
+            r,rate = wavread("./capture/mic_pcm_before_resample_8ch_48000.wav")
+            # raw, rate = wavread("$(capture[1]).wav")
+            # r = LibAudio.resample_vhq(Device.mixer(raw, mixmic), rate, fs)
 
         # decode async signal
         ess_mt = LibAudio.sinesweep_exp(f0, f1, t_ess, fd)
@@ -208,6 +204,7 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
             mic[:,i] = r[l:l+p-1,i]
         end
         return LibAudio.impresp(ess_mt, n_mt, f0, f1, fd, mic)
+
 
 
     elseif mode[1] == :fileio && mode[2] == :asio
@@ -228,11 +225,12 @@ function impulse_response(mixspk::Matrix{Float64}, mixmic::Matrix{Float64};
 
         playback = "dutplaybackexpsinesweep.wav"
         wavwrite(Device.mixer(essda, mixspk), playback, Fs=fs, nbits=32)
+        Device.luxinit()
         Device.luxplay(playback)
 
-                playdone = remotecall(Device.luxplay, wpid[1])
-                r = SoundcardAPI.record(size(essda,1), mixmic, fs)
-                fetch(playdone)
+            playdone = remotecall(Device.luxplay, wpid[1])
+            r = SoundcardAPI.record(size(essda,1), mixmic, fs)
+            fetch(playdone)
 
         # decode async signal
         ess_mt = LibAudio.sinesweep_exp(f0, f1, t_ess, fs)
@@ -338,7 +336,7 @@ function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_in
         elseif mode == :fileio
             # prepare the device
             Device.luxinit()
-            playback = "dutplayback.wav"
+            playback = "dutplaybacklevelcalibrate.wav"
             wavwrite(Device.mixer(symboldt, mixspk), playback, Fs=fs, nbits=32)
             Device.luxplay(playback)
     
@@ -392,6 +390,7 @@ end
 function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::Matrix{Float64}, mixmic::Matrix{Float64}, fs, dba_target, folderpath;
     barometer_correction = 0.0,
     mode = :asio,
+    fd = fs,
     t_context = 3.0,
     t_decay = 2.0,
     gain_sync = -12,
@@ -407,16 +406,13 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
 
     function recording_with_gain(g)
       
-        syncsym = LibAudio.syncsymbol(220,8000,1,fs)
-        source_async = LibAudio.syncsymbol_encode(source * 10^(g/20), t_context, 10^(gain_sync/20)*syncsym, t_decay, fs)
-
+        source_async = LibAudio.syncsymbol_encode(source * 10^(g/20), t_context, LibAudio.syncsymbol, gain_sync, t_decay, fd)
         if mode == :asio
             r = SoundcardAPI.playrecord(source_async, mixspk, mixmic, fs)
     
         elseif mode == :fileio
-            # prepare the device
             Device.luxinit()
-            playback = "dutplayback.wav"
+            playback = "dutplaybacklevelcalibrate.wav"
             wavwrite(Device.mixer(source_async, mixspk), playback, Fs=fs, nbits=32)
             Device.luxplay(playback)
     
@@ -426,7 +422,7 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
         else
             error("mode must be either :asio or :fileio")
         end
-        return r, syncsym
+        return r
     end
 
 
@@ -440,10 +436,10 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(1)))
 
     # do recording
-    ya, syn = recording_with_gain(source_gain_init) 
-    loc = LibAudio.syncsymbol_decode(ya, size(source,1), syn, t_decay, fs)
-    lb = loc[1,1] + length(syn) + round(Int64, t_decay * fs)
-    rb = loc[2,1] - 1
+    ya = recording_with_gain(source_gain_init) 
+    loc = LibAudio.syncsymbol_decode(ya, LibAudio.syncsymbol, t_decay, size(source,1)/fd, fs)
+    lb = loc[1]
+    rb = loc[1] + round(Int64,size(source,1)/fd*fs) - 1
 
     # dbspl of piston and piezo would give similar results: for example < 0.5dB
     dbspl_piston = LibAudio.spl(fileloc_piston, ya[lb:rb,:], ya[lb:rb,1], 1, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
@@ -459,10 +455,10 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     source_gain = source_gain_init + (dba_target - dba_piston[1])
     
     # apply the delta and remeasure
-    ya, syn = recording_with_gain(source_gain) 
-    loc = LibAudio.syncsymbol_decode(ya, size(source,1), syn, t_decay, fs)
-    lb = loc[1,1] + length(syn) + round(Int64, t_decay * fs)
-    rb = loc[2,1] - 1
+    ya = recording_with_gain(source_gain) 
+    loc = LibAudio.syncsymbol_decode(ya, LibAudio.syncsymbol, t_decay, size(source,1)/fs, fs)
+    lb = loc[1]
+    rb = loc[1] + round(Int64,size(source,1)/fd*fs) - 1
     dba_piston = LibAudio.spl(fileloc_piston, ya[lb:rb,:], ya[lb:rb,1], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
 
     return source_gain, dba_piston[1]
@@ -491,23 +487,23 @@ function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Floa
 
     # fileio -> asio
     sync = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 0.5, fs)
-    info("  sync samples: $(length(sync))")
+    info("sync samples: $(length(sync))")
     period = [zeros(round(Int64,100fs),1); sync]
     signal = [zeros(round(Int64,3fs),1); sync; repmat(period,repeat,1); zeros(round(Int64,3fs),1)]
-    info("  signal train formed")
+    info("signal train formed")
 
     Device.luxinit()
-    playback = "dutplayback.wav"
+    playback = "dutplaybackclockdriftmeasure.wav"
     wavwrite(Device.mixer(signal, devmix_spk), playback, Fs=fs, nbits=32)
-    info("  filesize: $(filesize("dutplayback.wav")/1024/1024) MiB")
+    info("filesize: $(filesize("dutplaybackclockdriftmeasure.wav")/1024/1024) MiB")
     Device.luxplay(playback)
-    info("  singal pushed to device")
+    info("singal pushed to device")
 
     playdone = remotecall(Device.luxplay, wpid[1])
     r = SoundcardAPI.record(size(signal,1), sndmix_mic, fs)
     fetch(playdone)
     wavwrite(r, "clockdrift.wav", Fs=fs, nbits=32)
-    info("  recording written to clockdrift.wav")
+    info("recording written to clockdrift.wav")
 
     # syncs = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 1, fss)
     # info("  syncs samples: $(length(syncs))")

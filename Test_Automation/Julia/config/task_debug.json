@@ -1,19 +1,24 @@
 {
     "Project": "Samsung LUX",
-    "Version": "0.0.1-beta+b2",
+    "Version": "0.0.1-rc+b1",
+    "Samsung Firmware Version": "0.0.0",
+    "Harman Solution Version": "9.9.999",
+    "Capture Tuning Version": "0.0.1",
+    "Speaker Tuning Version": "0.0.2",
+
     "Sample Rate": 48000,
     "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
     "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat",
-    "Clock Drift Compensation": true,
-    "Score Server IP": "10.80.123.45",
+    "Clock Drift Compensation": false,
+    "Score Server IP": "10.10.10.57",
+    "Internal Signals": false,
     
     "Task":[
         {
-            "Topic": "Test A",
+            "Topic": "Quiet",
             "Room": "ETSI",
             "Type": "KWS",
-            "Orientation(deg)": 7.5,
-            "Report": "/path/report.xls",
+            "Orientation(deg)": 0.5,
 
             "Mouth": [
                 {
@@ -45,10 +50,7 @@
 
             "Reference Mic": {
                 "Port": 9
-            },
-
-            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
-                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
+            }
         }
     ]
 }

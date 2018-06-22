@@ -46,22 +46,29 @@ using WAV
 
 
 
-    # streams = ["mic_8ch_16k_s16_le"]
-    function luxrecord(duration, streams)
+    
+    function luxrecord(duration; fetchall = false)
         try
             open("device_test.sh","w") do fid
+                if fetchall
+                    write(fid, "MicDspClient save all 1\n")
+                    write(fid, "sleep 1\n")
+                end
+
                 write(fid, "parecord --channels=2 --rate=16000 --file-format=wav /home/owner/record.wav &\n")
-                for i = 1 : maximum(size(streams))
-                    write(fid, "MicDspClient save $(streams[i]) 1\n")
-                end
+                fetchall && write(fid, "pactl set-pcm-dump hw_record 1\n")
                 write(fid, "sleep $duration\n")
-                for i = 1 : maximum(size(streams))
-                    write(fid, "MicDspClient save $(streams[i]) 0\n")
-                end
-                write(fid, "killall -9 parecord\n")
+                fetchall && write(fid, "pactl set-pcm-dump hw_record 0\n")
+                fetchall && write(fid, "MicDspClient save all 0\n")
+                
+                write(fid, "killall -15 parecord\n")
+                fetchall && write(fid, "mv /opt/usr/home/owner/media/*mic_pcm_before_resample_8ch_48000.raw /opt/usr/home/owner/media/mic_pcm_before_resample_8ch_48000.raw\n")
                 write(fid, "\n")
             end
             run(`sdb push device_test.sh /home/owner/`)
+            run(`sdb shell "rm -f /home/owner/record.wav"`)
+            run(`sdb shell "rm -f /opt/usr/home/owner/media/*.raw"`)
+            run(`sdb shell "rm -f /opt/usr/home/owner/media/dump/capture/*.raw"`)
             return true
         catch
             warn("lux record init failed")
@@ -69,12 +76,13 @@ using WAV
         end
     end
 
-    function luxrecord(streams)
+    function luxrecord(;fetchall = false)
         try
             run(`sdb shell ". /home/owner/device_test.sh"`)
             run(`sdb pull /home/owner/record.wav .`)
-            for i = 1 : maximum(size(streams))
-                run(`sdb pull /opt/usr/media/dump/capture/$(streams[i]).raw .`)
+            if fetchall
+                run(`sdb pull /opt/usr/home/owner/media/dump/capture ./capture`)
+                run(`sdb pull /opt/usr/home/owner/media/mic_pcm_before_resample_8ch_48000.raw ./capture/mic_pcm_before_resample_8ch_48000.raw`)
             end
             return true
         catch
@@ -86,56 +94,56 @@ using WAV
 
 
 
-    function luxplayrecord(wavfile, duration, streams)
+    function luxplayrecord(wavfile, duration; fetchall = false)
         try
             open("device_test.sh","w") do fid
+                if fetchall
+                    write(fid, "MicDspClient save all 1\n")
+                    write(fid, "sleep 1\n")
+                end
                 write(fid, "paplay /home/owner/test.wav &\n")
                 write(fid, "parecord --channels=2 --rate=16000 --file-format=wav /home/owner/record.wav &\n")
-                for i = 1 : maximum(size(streams))
-                    write(fid, "MicDspClient save $(streams[i]) 1\n")
-                end
+                fetchall && write(fid, "pactl set-pcm-dump hw_record 1\n")
                 write(fid, "sleep $duration\n")
-                for i = 1 : maximum(size(streams))
-                    write(fid, "MicDspClient save $(streams[i]) 0\n")
-                end
-                write(fid, "killall -9 parecord\n")
-                write(fid, "killall -9 paplay\n")
+                fetchall && write(fid, "pactl set-pcm-dump hw_record 0\n")
+                fetchall && write(fid, "MicDspClient save all 0\n")
+                
+                write(fid, "killall -15 parecord\n")
+                write(fid, "killall -15 paplay\n")
+                fetchall && write(fid, "mv /opt/usr/home/owner/media/*mic_pcm_before_resample_8ch_48000.raw /opt/usr/home/owner/media/mic_pcm_before_resample_8ch_48000.raw\n")
                 write(fid, "\n")
             end
-            run(`sdb push $wavfile /home/owner/test.wav`)
             run(`sdb push device_test.sh /home/owner/`)
+            run(`sdb push $wavfile /home/owner/test.wav`)
+            run(`sdb shell "rm -f /home/owner/record.wav"`)
+            run(`sdb shell "rm -f /opt/usr/home/owner/media/*.raw"`)
+            run(`sdb shell "rm -f /opt/usr/home/owner/media/dump/capture/*.raw"`)
             return true
         catch
-            warn("lux play+record init failed")
+            warn("lux playrecord init failed")
             return false
         end
     end
 
-    function luxplayrecord(streams)
+    function luxplayrecord(;fetchall = false)
         try
             run(`sdb shell ". /home/owner/device_test.sh"`)
             run(`sdb pull /home/owner/record.wav .`)
-            for i = 1 : maximum(size(streams))
-                run(`sdb pull /opt/usr/media/dump/capture/$(streams[i]).raw .`)
+            if fetchall
+                run(`sdb pull /opt/usr/home/owner/media/dump/capture ./capture`)
+                run(`sdb pull /opt/usr/home/owner/media/mic_pcm_before_resample_8ch_48000.raw ./capture/mic_pcm_before_resample_8ch_48000.raw`)
             end
             return true
         catch
-            warn("lux play+record failed")
+            warn("lux playrecord failed")
             return false
         end
     end
 
 
 
-    function luxclear()
-        try
-            run(`sdb shell "rm -f /home/owner/record.wav"`)
-            return true
-        catch
-            warn("lux clear failed")
-            return false
-        end
-    end
+
+    
     
 
     function raw2wav_16bit(rawfile, channels, fs, wavfile)

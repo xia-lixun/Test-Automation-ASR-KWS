@@ -27,7 +27,7 @@ function auto(taskjsonfile)
 
     # reading parameters
     conf = JSON.parsefile(taskjsonfile)
-    assert(VersionNumber(conf["Version"]) == v"0.0.1-beta+b2")
+    assert(VersionNumber(conf["Version"]) == v"0.0.1-rc+b1")
 
     fs = conf["Sample Rate"]
     function populate_mouth()
@@ -45,7 +45,7 @@ function auto(taskjsonfile)
 
 
     # preparation of workers
-    session_open(1)
+    session_open(2)
     wid = workers()
     info("parallel sessions loaded.")
     
@@ -54,11 +54,11 @@ function auto(taskjsonfile)
     # [0.9]
     # check device and soundcard availability
     Heartbeat.dutreset_client()
-    sleep(20)
+    sleep(10)
     while !Device.luxisalive()
         warn("device is not available? reboot the dut")
         Heartbeat.dutreset_client()
-        sleep(20)    
+        sleep(10)    
     end
     info("dut reboot ok")
     
@@ -123,22 +123,18 @@ function auto(taskjsonfile)
     # [1.2]
     # mouth loudspeaker eq check
     eq = matread(conf["Equalization Filters"])
-    # eq["ldspk_3_b"]
-    # eq["ldspk_3_a"]
-    # eq["mouth_7_b"]
-    # eq["mouth_7_a"]
     tf = Dict{String, Matrix{Float64}}()
+
     for i = 1:n_ldspk
         port = conf["Task"][1]["Noise"]["Port"][i]
         sndmix_spk = zeros(1, sndout_max)
         sndmix_spk[1, port] = 1.0
 
-        fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
+        fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs=fs, t_ess=3, t_decay=1, atten = -20, mode=(:asio,:asio))
         eqB = eqload(eq["ldspk_$(port)_b"])
         eqA = eqload(eq["ldspk_$(port)_a"])
-        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eqB, a = eqA)
+        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs=fs, t_ess=3, t_decay=1, atten = -20, mode=(:asio,:asio), eq=[(eqB,eqA)])
         
-        #display(plot([fu0[1:65536,:] fu1[1:65536,:]]))
         fu01 = abs.(fft([fu0[1:65536,:] fu1[1:65536,:]],1)) / 65536
         display(plot( 20log10.(fu01[1:32768,:].+eps()) ))
         sleep(3)
@@ -155,7 +151,7 @@ function auto(taskjsonfile)
         tf["ldspk_$(port)_tot0"] = tt0
         tf["ldspk_$(port)_tot1"] = tt1
         
-        # conditions to proceed
+        # placeholder: conditions to proceed
     end
     for i = 1:n_mouth
         port = conf["Task"][1]["Mouth"][i]["Port"]
@@ -165,9 +161,8 @@ function auto(taskjsonfile)
         fu0, ha0, di0, tt0 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio))
         eqB = eqload(eq["mouth_$(port)_b"])
         eqA = eqload(eq["mouth_$(port)_a"])
-        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), b=eqB, a = eqA)
+        fu1, ha1, di1, tt1 = impulse_response(sndmix_spk, sndmix_mic, fs = fs, t_ess = 3, t_decay = 1, atten = -20, mode = (:asio, :asio), eq=[(eqB,eqA)])
 
-        #display(plot([fu0[1:65536,:] fu1[1:65536,:]]))
         fu01 = abs.(fft([fu0[1:65536,:] fu1[1:65536,:]],1)) / 65536
         display(plot( 20log10.(fu01[1:32768,:].+eps()) ))
         sleep(3)
@@ -184,7 +179,7 @@ function auto(taskjsonfile)
         tf["mouth_$(port)_tot0"] = tt0
         tf["mouth_$(port)_tot1"] = tt1
 
-        # conditions to proceed
+        # placeholder: conditions to proceed
     end
     
 
@@ -195,7 +190,7 @@ function auto(taskjsonfile)
         info("measure device sample rate in precision:")
         devmix_spk = zeros(1,2)
         devmix_spk[1,1] = 1.0
-        fsd, freqdrift, chrodrift = clockdrift_measure(devmix_spk, sndmix_mic, repeat=3)
+        fsd, freqdrift, chrodrift = clockdrift_measure(devmix_spk, sndmix_mic, repeat=1)
         info("time drift of dut: $(freqdrift)/100 sec")
         info("chronic drift of dut: $(chrodrift)/100 sec")
         info("dut freqency: $(fsd) samples per second")
@@ -204,9 +199,8 @@ function auto(taskjsonfile)
     # [1.3]
     # check dut transfer function from dut speakers to reference mic
     devmix_spk = ones(1,2)
-    fu2, ha2, di2, tt2 = impulse_response(devmix_spk, sndmix_mic, fs = fs, fd = fsd, t_ess = 10, t_decay = 3, atten = -15, syncatten = -12, mode = (:fileio, :asio))
+    fu2, ha2, di2, tt2 = impulse_response(devmix_spk, sndmix_mic, fs=fs, fd=fsd, t_ess=10, t_decay=3, atten = -15, syncatten = -7, mode=(:fileio,:asio))
 
-    # display(plot(fu2[1:65536,:]))
     fu2v = abs.(fft(fu2[1:65536,:],1)) / 65536
     display(plot( 20log10.(fu2v[1:32768,:].+eps()) ))
     sleep(3)
@@ -225,7 +219,7 @@ function auto(taskjsonfile)
     sndmix_spk[1, conf["Task"][1]["Mouth"][1]["Port"]] = 1.0
     devmix_mic = eye(8)
 
-    fu3, ha3, di3, tt3 = impulse_response(sndmix_spk, devmix_mic, fs = fs, fd = fsd, t_ess = 10, t_decay = 3, atten = -18, syncatten = -12, mode = (:asio, :fileio))
+    fu3, ha3, di3, tt3 = impulse_response(sndmix_spk, devmix_mic, fs=fs, fd=fsd, t_ess=10, t_decay=3, atten = -15, syncatten = -7, mode=(:asio,:fileio))
 
     # display(plot(fu3[1:65536,:]))
     fu3v = abs.(fft(fu3[1:65536,:],1)) / 65536
@@ -249,8 +243,9 @@ function auto(taskjsonfile)
     datpath = replace(string(now()), [':','.'], '-')
     mkdir(datpath)
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
-
     score_future = Array{Future}(length(conf["Task"]))
+
+
     for (seq,i) in enumerate(conf["Task"])
 
         status = false
@@ -275,7 +270,6 @@ function auto(taskjsonfile)
                 sleep(10)
             end
             Device.luxinit()
-            Device.luxclear()
             info("dut reboot, init and clear ok")
 
             # ----[2.3]----
@@ -384,9 +378,9 @@ function auto(taskjsonfile)
 
             dutalive = true
             if !isempty(i["Echo"]["Source"])
-                status = Device.luxplayrecord("echocalibrated.wav", t_record, [])
+                status = Device.luxplayrecord("echocalibrated.wav", t_record, fetchall=conf["Internal Signals"])
             else
-                status = Device.luxrecord(t_record, [])
+                status = Device.luxrecord(t_record, fetchall=conf["Internal Signals"])
             end
             dutalive = dutalive && status
             info("main recording ready for go: dut status - $(status)")    
@@ -398,12 +392,13 @@ function auto(taskjsonfile)
             
             complete = false
             expback = 2
+
             while !complete
                 sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # low-latency api
                 if !isempty(i["Echo"]["Source"])            
-                    status = Device.luxplayrecord([])
+                    status = Device.luxplayrecord(fetchall=conf["Internal Signals"])
                 else
-                    status = Device.luxrecord([])
+                    status = Device.luxrecord(fetchall=conf["Internal Signals"])
                 end
                 fetch(sndone)
                 dutalive = dutalive && status
@@ -412,16 +407,16 @@ function auto(taskjsonfile)
                 finalout, rate = wavread("record.wav")
                 dutalive = dutalive && Device.luxisalive()
 
-                if dutalive && size(finalout,1) >= floor(Int64, t_record * rate) 
+                if dutalive && size(finalout,1) > floor(Int64, (t_record-3.0) * rate) 
                     info("recording seems to be ok for file length")
-
                     refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
                     mv("record.wav", joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), remove_destination=true)
                     wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
+                    conf["Internal Signals"] && mv("./capture", joinpath(datpath, i["Topic"], "capture"))
                     info("results written to /$(datpath)/$(i["Topic"])")            
                     complete = true
 
-                elseif dutalive && size(finalout,1) < floor(Int64, t_record * rate)
+                elseif dutalive && size(finalout,1) < floor(Int64, (t_record-3.0) * rate)
                     warn("possibly parecord/paplay process not found, redo the main recording")
                     sleep(expback)
                     expback = 2expback
@@ -450,9 +445,15 @@ function auto(taskjsonfile)
     # form the final report based on individual reports
     finalpath = joinpath(datpath,"report-final.txt")
     open(finalpath,"w") do ffid
+        write(ffid, "$(now())\n\n")
+        write(ffid, "Samsung Firmware Version: $(conf["Samsung Firmware Version"])\n")
+        write(ffid, "Harman Solution Version: $(conf["Harman Solution Version"])\n")
+        write(ffid, "Capture Tuning Version: $(conf["Capture Tuning Version"])\n")
+        write(ffid, "Speaker Tuning Version: $(conf["Speaker Tuning Version"])\n\n")
+        write(ffid, "====\n")
         for seq = 1:length(conf["Task"])
             info(fetch(score_future[seq]))
-            s = open(joinpath(datpath, conf["Task"][seq]["Topic"], "report_$(i["Topic"]).txt"), "r") do fid
+            s = open(joinpath(datpath, conf["Task"][seq]["Topic"], "record_$(conf["Task"][seq]["Topic"]).txt"), "r") do fid
                 readlines(fid)
             end
             for k in s

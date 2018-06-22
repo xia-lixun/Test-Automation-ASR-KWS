@@ -1,11 +1,17 @@
 {
     "Project": "Samsung LUX",
-    "Version": "0.0.1-beta+b2",
+    "Version": "0.0.1-rc+b1",
+    "Samsung Firmware Version": "0.0.0",
+    "Harman Solution Version": "9.9.999",
+    "Capture Tuning Version": "0.0.1",
+    "Speaker Tuning Version": "0.0.2",
+
     "Sample Rate": 48000,
     "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
     "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat",
     "Clock Drift Compensation": true,
-    "Score Server IP": "10.80.123.45",
+    "Score Server IP": "10.80.229.41",
+    "Internal Signals": false,
     
     "Task":[
         {
@@ -13,7 +19,6 @@
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 7.5,
-            "Report": "/path/report.xls",
 
             "Mouth": [
                 {
@@ -45,10 +50,7 @@
 
             "Reference Mic": {
                 "Port": 9
-            },
-
-            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
-                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
+            }
         },
 
         {
@@ -56,7 +58,6 @@
             "Room": "Anechoic",
             "Type": "ASR",
             "Orientation(deg)": 8.7,
-            "Report": "/path/report.xls",
 
             "Mouth": [
                 {
@@ -88,10 +89,7 @@
 
             "Reference Mic": {
                 "Port": 9
-            },
-
-            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
-                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
+            }
         },
 
         {
@@ -99,7 +97,6 @@
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 9.9,
-            "Report": "/path/report.xls",
 
             "Mouth": [
                 {
@@ -131,10 +128,7 @@
 
             "Reference Mic": {
                 "Port": 9
-            },
-
-            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
-                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
+            }
         },
 
         {
@@ -142,7 +136,6 @@
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 11.3,
-            "Report": "/path/report.xls",
 
             "Mouth": [
                 {
@@ -174,10 +167,7 @@
 
             "Reference Mic": {
                 "Port": 9
-            },
-
-            "DUT Recording": [ "MicIn", "MicRef", "MicInput", "DCBlock", "AEC", "FixedBeamFormer", "GlobalEq", "SpectralBeamSteering", "AdaptiveBeamFormer", 
-                "NoiseReduction", "ASRLeveler", "ASRLimiter", "CallLeveler", "Expander", "CallEq", "CallLimiter", "MicOut"]
+            }
         }
     ]
 }
