@@ -1,0 +1,97 @@
+{
+    "Project": "Samsung LUX",
+    "Version": "0.0.1-rc+b1",
+    "Samsung Firmware Version": "0.0.0",
+    "Harman Solution Version": "9.9.999",
+    "Capture Tuning Version": "0.0.1",
+    "Speaker Tuning Version": "0.0.2",
+
+    "Sample Rate": 48000,
+    "Level Calibration": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
+    "Equalization Filters": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat",
+    "Clock Drift Compensation": false,
+    "Score Server IP": "192.168.1.188",
+    "Internal Signals": false,
+    
+    "Task":[
+
+        {
+            "Topic": "3m_echo",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientation(deg)": 0.0,
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 300,
+                    "Port": 7,
+                    "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Echo\\60Silence_3m25sSpeech.wav",
+                    "Level(dBA)": 65,
+                    "Calibration Start(sec)": 65.5,
+                    "Calibration Stop(sec)": 66.611
+                }
+            ],
+
+            "Noise": {
+                "Source": "",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 57,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Echo\\60sPinkNoise_3m25sMusic.wav",
+                "Level(dBA)": 87,
+                "Calibration Start(sec)": 120,
+                "Calibration Stop(sec)": 180,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            }
+        },
+
+        {
+            "Topic": "3m_noise",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientation(deg)": 0.0,
+
+            "Mouth": [
+                {
+                    "Distance(mm)": 300,
+                    "Port": 7,
+                    "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Noise\\60Silence_3m25sSpeech.wav",
+                    "Level(dBA)": 65,
+                    "Calibration Start(sec)": 65.5,
+                    "Calibration Stop(sec)": 66.611
+                }
+            ],
+
+            "Noise": {
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Noise\\60sTVNoise_3m25sTVNoise.wav",
+                "Port": [3,4,5,6],
+                "Level(dBA)": 58,
+                "Calibration Start(sec)": 120,
+                "Calibration Stop(sec)": 180,
+                "Position": "10mm above DUT"
+            },
+
+            "Echo": {
+                "Source": "",
+                "Level(dBA)": 75,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
+                "Position": "10mm above DUT"
+            },
+
+            "Reference Mic": {
+                "Port": 9
+            }
+        }
+
+    ]
+}
