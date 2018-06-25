@@ -7,10 +7,10 @@
     "Speaker Tuning Version": "0.0.2",
 
     "Sample Rate": 48000,
-    "Level Calibration": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
-    "Equalization Filters": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat",
+    "Level Calibration": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib",
+    "Equalization Filters": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat",
     "Clock Drift Compensation": false,
-    "Score Server IP": "10.10.10.57",
+    "Score Server IP": "192.168.1.188",
     "Internal Signals": false,
     
     "Task":[
@@ -24,7 +24,7 @@
                 {
                     "Distance(mm)": 500,
                     "Port": 7,
-                    "Source": "D:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                    "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\Lux180518\\WakeupWord\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
                     "Level(dBA)": 53,
                     "Calibration Start(sec)": 5.5,
                     "Calibration Stop(sec)": 6.611

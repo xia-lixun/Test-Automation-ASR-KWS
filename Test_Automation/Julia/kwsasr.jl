@@ -9,11 +9,12 @@ module KwsAsr
             run(`$(ssh) coc@$(server_ip) "rm -f /home/coc/WakeupScoring_Tool_2.4/wav/*.txt"`)
             
             # push to the server
-            run(`pscp -pw Audio123 -scp $(wavfile) coc@$(server_ip):/home/coc/WakeupScoring_Tool_2.4/wav/`)
+            scp = "C:\\Program Files\\Git\\usr\\bin\\scp.exe"
+            run(`$(scp) $(wavfile) coc@$(server_ip):/home/coc/WakeupScoring_Tool_2.4/wav/$(basename(wavfile))`)
             run(`$(ssh) coc@$(server_ip) lux-score.sh`)
             
             # pull results back and render
-            run(`pscp -unsafe -pw Audio123 -scp coc@$(server_ip):"/home/coc/WakeupScoring_Tool_2.4/wav/*.txt" $(reportpath)`)
+            run(`$(scp) coc@$(server_ip):"/home/coc/WakeupScoring_Tool_2.4/wav/*.txt" $(reportpath)`)
             return true
         catch
             warn("kws/asr score failure, redo the scoring manually")
