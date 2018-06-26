@@ -23,6 +23,314 @@ include("validate.jl")
 
 
 
+
+function tune(taskjsonfile)
+
+    conf = JSON.parsefile(taskjsonfile)
+    assert(VersionNumber(conf["Version"]) == v"0.0.1-rc+b1")
+    
+    fs = conf["Sample Rate"]
+    function populate_mouth()
+        mth = Set{Int64}()
+        for i in conf["Task"][1]["Mouth"]
+            push!(mth, i["Port"])
+        end
+        sort([i for i in mth])
+    end
+    mouth_ports = populate_mouth()
+    n_mouth = length(mouth_ports)
+    n_ldspk = length(conf["Task"][1]["Noise"]["Port"])
+    info("artificial mouth ports: $(mouth_ports)")
+    info("noise loudspeaker ports: $(Int64.(conf["Task"][1]["Noise"]["Port"]))")
+
+
+    # preparation of workers
+    session_open(1)
+    wid = workers()
+    info("parallel sessions loaded.")
+    
+
+    # [0.9]
+    # check device and soundcard availability
+    Heartbeat.dutreset_client()
+    sleep(10)
+    while !Device.luxisalive()
+        warn("device is not available? reboot the dut")
+        Heartbeat.dutreset_client()
+        sleep(10)    
+    end
+    info("dut reboot ok")
+    
+
+    dgt = SoundcardAPI.device()
+    dgt[1] < 1 && error("soundcard is not available?")
+    info("device and soundcard found.")
+
+    # read parameters from the soundcard
+    m = match(Regex("[0-9]+"), dgt[2][6])
+    sndin_max = min(10, parse(Int64, m.match))
+    m = match(Regex("[0-9]+"), dgt[2][6], m.offset+length(m.match))
+    sndout_max = min(10, parse(Int64, m.match))
+    info("soundcard i/o max: $(sndin_max)/$(sndout_max)")
+
+
+    # check if the time validity of calibrations
+    sndmix_mic = zeros(sndin_max, 1)
+    sndmix_mic[conf["Task"][1]["Reference Mic"]["Port"], 1] = 1.0
+
+    piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX")
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX")
+
+    dontcare, milli_piston = levelcalibrate_retrievelatest(conf["Level Calibration"], hwinfo = piston)
+    dontcare, milli_piezo = levelcalibrate_retrievelatest(conf["Level Calibration"], hwinfo = piezo)
+
+    # if time check fails do level calibration update
+    if milli_piston >= Dates.Millisecond(Dates.Day(1)) || milli_piezo >= Dates.Millisecond(Dates.Day(1))
+
+        Tk.Messagebox(title="Action", message="Please tether 42AA to reference mic, when ready press ok")
+        snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piston)
+        display(plot(snap))
+
+        Tk.Messagebox(title="Action", message="Please tether 42AB to reference mic, when ready press ok")
+        snap = levelcalibrate_updateref(sndmix_mic, 60, fs, conf["Level Calibration"], hwinfo=piezo)
+        display(plot(snap))
+
+        Tk.Messagebox(title="Info", message="Level calibration data updated, please restore mic back to position, then press ok")
+    end
+
+    
+
+    # make unique measurement folder, after all sanity checks ok
+    eq = matread(conf["Equalization Filters"])
+    datpath = replace(string(now()), [':','.'], '-')
+    mkdir(datpath)
+    score_future = Array{Future}(length(conf["Task"]))
+
+
+    for (seq,i) in enumerate(conf["Task"])
+
+        status = false
+        dutalive = false
+        while !dutalive
+
+            # ----[2.0]----
+            info("start task $(i["Topic"])")
+            mkdir(joinpath(datpath, i["Topic"]))
+
+            while !Device.luxisalive()
+                Heartbeat.dutreset_client()
+                sleep(10)
+            end
+            Device.luxinit()
+            info("dut reboot, init and clear ok")
+
+            # ----[2.3]----
+            # apply eq to speech and noise files, peak normalize to avoid clipping
+            mouhot = 0
+            for (k,j) in enumerate(i["Mouth"])
+                if !isempty(j["Source"])
+                    mouhot = k
+                    break
+                end
+            end
+            speech, rate = wavread(i["Mouth"][mouhot]["Source"])
+            assert(size(speech,2) == 1)
+            assert(Int64(rate) == fs)
+
+            mouhot_p = i["Mouth"][mouhot]["Port"]
+            speech_eq = LibAudio.tf_filter(eqload(eq["mouth_$(mouhot_p)_b"]), eqload(eq["mouth_$(mouhot_p)_a"]), speech)   
+            speech_eq = speech_eq ./ maximum(speech_eq)
+            info("speech eq applied and peak normalized")
+
+            if !isempty(i["Noise"]["Source"])
+                noise, rate = wavread(i["Noise"]["Source"])
+                n_noise = size(noise,2)
+                assert(in(n_noise, [1, n_ldspk]))       # noise file is either mono-channel, or n-channel that fits the noise loudspeakers
+                assert(Int64(rate) == fs)
+
+                noise_eq = zeros(size(noise,1), n_ldspk)
+                for j = 1:n_ldspk
+                    port = i["Noise"]["Port"][j]
+                    noise_eq[:,j] = LibAudio.tf_filter(eqload(eq["ldspk_$(port)_b"]), eqload(eq["ldspk_$(port)_a"]), noise[:, min(j, n_noise)])
+                    noise_eq[:,j] = noise_eq[:,j] ./ maximum(noise_eq[:,j])
+                end
+                info("noise source detected: eq applied and peak normalized")
+            else
+                info("noise source not present, skip eq")
+            end
+
+
+            # ----[2.4]----
+            # level calibration of mouth and noise speakers
+            t0 = round(Int64, i["Mouth"][mouhot]["Calibration Start(sec)"] * fs)
+            t1 = round(Int64, i["Mouth"][mouhot]["Calibration Stop(sec)"] * fs)
+            speech_eq_calib = [speech_eq[t0:t1,1]; speech_eq[t0:t1,1]; speech_eq[t0:t1,1]]
+
+            sndmix_spk = zeros(1, sndout_max)
+            sndmix_spk[1, mouhot_p] = 1.0
+            speech_gain, dba_measure = levelcalibrate_dba(speech_eq_calib, 3, -6, sndmix_spk, sndmix_mic, fs, i["Mouth"][mouhot]["Level(dBA)"], conf["Level Calibration"])
+            speech_eq .= 10^(speech_gain/20) .* speech_eq
+            info("speech_eq level calibrated")
+
+            if !isempty(i["Noise"]["Source"])
+                t0 = round(Int64, i["Noise"]["Calibration Start(sec)"] * fs)
+                t1 = round(Int64, i["Noise"]["Calibration Stop(sec)"] * fs)
+                noise_eq_calib = noise_eq[t0:t1, :]
+
+                sndmix_spk = zeros(n_ldspk, sndout_max)
+                for j = 1:n_ldspk
+                    sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
+                end
+                noise_gain, dba_measure = levelcalibrate_dba(noise_eq_calib, -6, sndmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"])
+                noise_eq .= 10^(noise_gain/20) .* noise_eq
+                info("noise_eq level calibrated")
+            else
+                info("skip noise level calibration")
+            end
+
+
+            # ----[2.5]----
+            # dut echo level calibration if there is a requirement
+            if !isempty(i["Echo"]["Source"])
+                echo, rate = wavread(i["Echo"]["Source"])
+                assert(size(echo,2) == 2)
+                assert(Int64(rate) == fs)
+
+                t0 = round(Int64, i["Echo"]["Calibration Start(sec)"] * fs)
+                t1 = round(Int64, i["Echo"]["Calibration Stop(sec)"] * fs)
+                echo_calib = echo[t0:t1, :]
+                
+                devmix_spk = eye(2)
+                echo_gain, dba_measure = levelcalibrate_dba(echo_calib, -6, devmix_spk, sndmix_mic, fs, i["Echo"]["Level(dBA)"], conf["Level Calibration"], mode=:fileio)
+                echo .= 10^(echo_gain/20) .* echo
+                wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
+                info("echo source detected: level calibrated")
+            else
+                info("echo source not present, skip level calibration")
+            end
+
+
+            # ----[2.6]----
+            # start playback and recording using signals after the eq and calibrated gains
+            sndplay = zeros(size(speech_eq,1), n_ldspk+1)
+            if !isempty(i["Noise"]["Source"])
+                sndplay[:, 1:n_ldspk] = noise_eq[1:min(size(speech_eq,1),size(noise_eq,1)),:]
+            end
+            sndplay[:, n_ldspk+1] = speech_eq[:,:]
+            
+            # generate mix
+            sndmix_spk = zeros(n_ldspk+1, sndout_max)
+            for j = 1:n_ldspk
+                sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
+            end
+            sndmix_spk[n_ldspk+1, mouhot_p] = 1.0
+            
+            # recording time duration
+            t_record = ceil(size(sndplay,1)/fs) + 3.0
+
+            dutalive = true
+            if !isempty(i["Echo"]["Source"])
+                status = Device.luxplayrecord("echocalibrated.wav", t_record, fetchall=conf["Internal Signals"])
+            else
+                status = Device.luxrecord(t_record, fetchall=conf["Internal Signals"])
+            end
+            dutalive = dutalive && status
+            info("main recording ready for go: dut status - $(status)")    
+            
+            # bang!
+            dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
+            pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
+            pcmi = SharedArray{Float32,1}(zeros(Float32, size(sndmix_mic,1) * size(dat)[1]))
+            
+            complete = false
+            expback = 2
+
+            while !complete
+                sndone = remotecall(SoundcardAPI.playrecord, wid[1], size(dat), pcmo, pcmi, size(sndmix_mic), fs)  # low-latency api
+                if !isempty(i["Echo"]["Source"])            
+                    status = Device.luxplayrecord(fetchall=conf["Internal Signals"])
+                else
+                    status = Device.luxrecord(fetchall=conf["Internal Signals"])
+                end
+                fetch(sndone)
+                dutalive = dutalive && status
+                info("main recording finished: dut status - $(status)")
+
+                finalout, rate = wavread("record.wav")
+                dutalive = dutalive && Device.luxisalive()
+
+                if dutalive && size(finalout,1) > floor(Int64, (t_record-3.0) * rate) 
+                    info("recording seems to be ok for file length")
+                    refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
+                    mv("record.wav", joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), remove_destination=true)
+                    wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
+                    conf["Internal Signals"] && mv("./capture", joinpath(datpath, i["Topic"], "capture"))
+                    info("results written to /$(datpath)/$(i["Topic"])")            
+                    complete = true
+
+                elseif dutalive && size(finalout,1) < floor(Int64, (t_record-3.0) * rate)
+                    warn("possibly parecord/paplay process not found, redo the main recording")
+                    sleep(expback)
+                    expback = 2expback
+                    if expback >= 64
+                        complete = true
+                        dutalive = false
+                    end
+                else    
+                    warn("device seems dead, redo the task")
+                    complete = true
+                end
+            end # while !complete
+        end # while !dutalive
+
+
+        # [2.7]
+        # push results to scoring server, retrieve the individual report
+        score_future[seq] = KwsAsr.score_kws(conf["Score Server IP"], joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), joinpath(datpath, i["Topic"]))
+    end
+    
+    # [2.8]
+    # form the final report based on individual reports
+    finalpath = joinpath(datpath,"report-final.txt")
+    open(finalpath,"w") do ffid
+        write(ffid, "$(now())\n\n")
+        write(ffid, "Samsung Firmware Version: $(conf["Samsung Firmware Version"])\n")
+        write(ffid, "Harman Solution Version: $(conf["Harman Solution Version"])\n")
+        write(ffid, "Capture Tuning Version: $(conf["Capture Tuning Version"])\n")
+        write(ffid, "Speaker Tuning Version: $(conf["Speaker Tuning Version"])\n\n")
+        write(ffid, "====\n")
+        for seq = 1:length(conf["Task"])
+            info(fetch(score_future[seq]))
+            s = open(joinpath(datpath, conf["Task"][seq]["Topic"], "record_$(conf["Task"][seq]["Topic"]).txt"), "r") do fid
+                readlines(fid)
+            end
+            for k in s
+                write(ffid, k * "\n")
+            end
+            write(ffid, "====\n")
+        end
+    end
+    info("final report written to $(finalpath)")
+
+    
+    session_close()
+    nothing
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function auto(taskjsonfile)
 
     # reading parameters
