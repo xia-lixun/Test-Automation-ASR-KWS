@@ -104,7 +104,7 @@ function tune(taskjsonfile)
     eq = matread(conf["Equalization Filters"])
     datpath = replace(string(now()), [':','.'], '-')
     mkdir(datpath)
-    score_future = Array{Future}(length(conf["Task"]))
+    score_future = Array{Bool}(length(conf["Task"]))
 
 
     for (seq,i) in enumerate(conf["Task"])
@@ -300,7 +300,7 @@ function tune(taskjsonfile)
         write(ffid, "Speaker Tuning Version: $(conf["Speaker Tuning Version"])\n\n")
         write(ffid, "====\n")
         for seq = 1:length(conf["Task"])
-            info(fetch(score_future[seq]))
+            info(score_future[seq])
             s = open(joinpath(datpath, conf["Task"][seq]["Topic"], "record_$(conf["Task"][seq]["Topic"]).txt"), "r") do fid
                 readlines(fid)
             end
