@@ -13,10 +13,35 @@ using WAV
             run(`sdb root on`)
             run(`sdb shell "mount -o remount,rw /"`)
             run(`sdb shell "chmod -R 777 /opt/usr/media"`)
+            run(`sdb shell "vconftool set -t bool memory/private/bixby_wakeup_service/wakeup_mute 1 -f"`)
             return true
         catch
             warn("lux init failed")
             return false
+        end
+    end
+
+
+
+
+    #  Reference is 119 -> 0dB
+    #  Info: one step equal 0.5dB
+    #  Example: -4dB equals step 111
+    function luxpowericvol(;twt_vol=111, wf_vol=119)
+        try
+            run(`sdb root on`)
+            # twitter
+            run(`sdb shell amixer cset name="AMP1 Left Speaker Volume" $(twt_vol)`)
+            run(`sdb shell amixer cset name="AMP2 Left Speaker Volume" $(twt_vol)`)
+            run(`sdb shell amixer cset name="AMP3 Left Speaker Volume" $(twt_vol)`)
+            run(`sdb shell amixer cset name="AMP1 Right Speaker Volume" $(twt_vol)`)
+            run(`sdb shell amixer cset name="AMP2 Right Speaker Volume" $(twt_vol)`)
+            run(`sdb shell amixer cset name="AMP3 Right Speaker Volume" $(twt_vol)`)
+            # woofer
+            run(`sdb shell amixer cset name="AMP4 Left Speaker Volume" $(wf_vol)`)
+            run(`sdb shell amixer cset name="AMP4 Right Speaker Volume" $(wf_vol)`)
+        catch
+            warn("lux power ic gain failed")
         end
     end
 
