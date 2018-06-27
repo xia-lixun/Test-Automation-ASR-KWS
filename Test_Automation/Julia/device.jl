@@ -13,7 +13,7 @@ using WAV
             run(`sdb root on`)
             run(`sdb shell "mount -o remount,rw /"`)
             run(`sdb shell "chmod -R 777 /opt/usr/media"`)
-            run(`sdb shell "vconftool set -t bool memory/private/bixby_wakeup_service/wakeup_mute 1 -f"`)
+            # run(`sdb shell "vconftool set -t bool memory/private/bixby_wakeup_service/wakeup_mute 1 -f"`)
             return true
         catch
             warn("lux init failed")
