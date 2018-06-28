@@ -552,6 +552,9 @@ function auto(taskjsonfile)
     mkdir(datpath)
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
     score_future = Array{Future}(length(conf["Task"]))
+    cache_speech_cal = Dict{Any,Float64}()
+    cache_noise_cal = Dict{Any,Float64}()
+    cache_echo_cal = Dict{Any,Float64}()
 
 
     for (seq,i) in enumerate(conf["Task"])
@@ -618,28 +621,48 @@ function auto(taskjsonfile)
 
             # ----[2.4]----
             # level calibration of mouth and noise speakers
-            t0 = round(Int64, i["Mouth"][mouhot]["Calibration Start(sec)"] * fs)
-            t1 = round(Int64, i["Mouth"][mouhot]["Calibration Stop(sec)"] * fs)
-            speech_eq_calib = [speech_eq[t0:t1,1]; speech_eq[t0:t1,1]; speech_eq[t0:t1,1]]
+            if in(i["Mouth"][mouhot], keys(cache_speech_cal))
 
-            sndmix_spk = zeros(1, sndout_max)
-            sndmix_spk[1, mouhot_p] = 1.0
-            speech_gain, dba_measure = levelcalibrate_dba(speech_eq_calib, 3, -6, sndmix_spk, sndmix_mic, fs, i["Mouth"][mouhot]["Level(dBA)"], conf["Level Calibration"])
-            speech_eq .= 10^(speech_gain/20) .* speech_eq
-            info("speech_eq level calibrated")
+                speech_gain = cache_speech_cal[i["Mouth"][mouhot]]
+                speech_eq .= 10^(speech_gain/20) .* speech_eq
+                info("speech_eq level calibrated before, retrieve from history: $(speech_gain)")
+            else
+                t0 = round(Int64, i["Mouth"][mouhot]["Calibration Start(sec)"] * fs)
+                t1 = round(Int64, i["Mouth"][mouhot]["Calibration Stop(sec)"] * fs)
+                speech_eq_calib = [speech_eq[t0:t1,1]; speech_eq[t0:t1,1]; speech_eq[t0:t1,1]]
 
+                sndmix_spk = zeros(1, sndout_max)
+                sndmix_spk[1, mouhot_p] = 1.0
+                speech_gain, dba_measure = levelcalibrate_dba(speech_eq_calib, 3, -6, sndmix_spk, sndmix_mic, fs, i["Mouth"][mouhot]["Level(dBA)"], conf["Level Calibration"])
+
+                speech_eq .= 10^(speech_gain/20) .* speech_eq
+                cache_speech_cal[i["Mouth"][mouhot]] = speech_gain
+                info("speech_eq level newly calibrated and cached: $(speech_gain)")
+            end
+
+            
             if !isempty(i["Noise"]["Source"])
-                t0 = round(Int64, i["Noise"]["Calibration Start(sec)"] * fs)
-                t1 = round(Int64, i["Noise"]["Calibration Stop(sec)"] * fs)
-                noise_eq_calib = noise_eq[t0:t1, :]
 
-                sndmix_spk = zeros(n_ldspk, sndout_max)
-                for j = 1:n_ldspk
-                    sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
+                if in(i["Noise"], keys(cache_noise_cal))
+
+                    noise_gain = cache_noise_cal[i["Noise"]]
+                    noise_eq .= 10^(noise_gain/20) .* noise_eq
+                    info("noise_eq level calibrated before, retrieve from history: $(noise_gain)")
+                else
+                    t0 = round(Int64, i["Noise"]["Calibration Start(sec)"] * fs)
+                    t1 = round(Int64, i["Noise"]["Calibration Stop(sec)"] * fs)
+                    noise_eq_calib = noise_eq[t0:t1, :]
+
+                    sndmix_spk = zeros(n_ldspk, sndout_max)
+                    for j = 1:n_ldspk
+                        sndmix_spk[j, i["Noise"]["Port"][j]] = 1.0
+                    end
+                    noise_gain, dba_measure = levelcalibrate_dba(noise_eq_calib, -6, sndmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"])
+
+                    noise_eq .= 10^(noise_gain/20) .* noise_eq
+                    cache_noise_cal[i["Noise"]] = noise_gain
+                    info("noise_eq level newly calibrated and cached: $(noise_gain)")
                 end
-                noise_gain, dba_measure = levelcalibrate_dba(noise_eq_calib, -6, sndmix_spk, sndmix_mic, fs, i["Noise"]["Level(dBA)"], conf["Level Calibration"])
-                noise_eq .= 10^(noise_gain/20) .* noise_eq
-                info("noise_eq level calibrated")
             else
                 info("skip noise level calibration")
             end
@@ -648,19 +671,29 @@ function auto(taskjsonfile)
             # ----[2.5]----
             # dut echo level calibration if there is a requirement
             if !isempty(i["Echo"]["Source"])
+
                 echo, rate = wavread(i["Echo"]["Source"])
                 assert(size(echo,2) == 2)
                 assert(Int64(rate) == fs)
 
-                t0 = round(Int64, i["Echo"]["Calibration Start(sec)"] * fs)
-                t1 = round(Int64, i["Echo"]["Calibration Stop(sec)"] * fs)
-                echo_calib = echo[t0:t1, :]
-                
-                devmix_spk = eye(2)
-                echo_gain, dba_measure = levelcalibrate_dba(echo_calib, -6, devmix_spk, sndmix_mic, fs, i["Echo"]["Level(dBA)"], conf["Level Calibration"], mode=:fileio)
-                echo .= 10^(echo_gain/20) .* echo
-                wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
-                info("echo source detected: level calibrated")
+                if in(i["Echo"], keys(cache_echo_cal))
+
+                    echo_gain = cache_echo_cal[i["Echo"]]
+                    echo .= 10^(echo_gain/20) .* echo
+                    wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
+                    info("echo_eq level calibrated before, retrieve from history: $(echo_gain)")
+                else
+                    t0 = round(Int64, i["Echo"]["Calibration Start(sec)"] * fs)
+                    t1 = round(Int64, i["Echo"]["Calibration Stop(sec)"] * fs)
+                    echo_calib = echo[t0:t1, :]
+                    devmix_spk = eye(2)
+                    echo_gain, dba_measure = levelcalibrate_dba(echo_calib, -6, devmix_spk, sndmix_mic, fs, i["Echo"]["Level(dBA)"], conf["Level Calibration"], mode=:fileio)
+
+                    echo .= 10^(echo_gain/20) .* echo
+                    wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
+                    cache_echo_cal[i["Echo"]] = echo_gain
+                    info("echo source detected: level newly calibrated and cached: $(echo_gain)")
+                end
             else
                 info("echo source not present, skip level calibration")
             end
@@ -693,6 +726,7 @@ function auto(taskjsonfile)
             dutalive = dutalive && status
             info("main recording ready for go: dut status - $(status)")    
             
+            #
             # bang!
             dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
             pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
