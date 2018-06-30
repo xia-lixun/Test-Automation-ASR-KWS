@@ -322,34 +322,37 @@ end
 
 
 
+# level = "[info] int"
+#         "[warn] int"
+#         "[erro] int"
+# "[info] 3:2018-06-30 11-03-29:something happened"
+function logt(level, message)
+    t = replace("$(now())",[':','.'],'-')
+    open("at.log","a") do fid
+        write(fid, level * ":" * t * ":" * message * "\n")
+    end
+    message
+end
 
 
 
 
 
 
-
-
-
-function auto(taskjsonfile)
+function auto(config)
+    
+    info(logt("[info] 0", "== test started =="))
 
     # reading parameters
-    conf = JSON.parsefile(taskjsonfile)
-    assert(VersionNumber(conf["Version"]) == v"0.0.1-rc+b1")
-
-    fs = conf["Sample Rate"]
-    function populate_mouth()
-        mth = Set{Int64}()
-        for i in conf["Task"][1]["Mouth"]
-            push!(mth, i["Port"])
-        end
-        sort([i for i in mth])
-    end
-    mouth_ports = populate_mouth()
-    n_mouth = length(mouth_ports)
-    n_ldspk = length(conf["Task"][1]["Noise"]["Port"])
-    info("artificial mouth ports: $(mouth_ports)")
-    info("noise loudspeaker ports: $(Int64.(conf["Task"][1]["Noise"]["Port"]))")
+    cf = JSON.parsefile(config)
+    assert(VersionNumber(cf["Version"]) == v"0.0.1-release+b1")
+    fs = cf["Sample Rate"]
+    p_mouth = cf["Artificial Mouth"]["Port"]
+    p_ldspk = cf["Noise Loudspeaker"]["Port"]
+    n_mouth = length(p_mouth)
+    n_ldspk = length(p_ldspk)
+    info(logt("[info] 1", "artificial mouth ports = $(p_mouth)"))
+    info(logt("[info] 1", "noise loudspeaker ports = $(p_ldspk)"))
 
 
     # preparation of workers
@@ -803,6 +806,9 @@ function auto(taskjsonfile)
             end
             write(ffid, "====\n")
         end
+    end
+    open(joinpath(datpath,"gain-specification.json"),"w") do jid
+        write(jid, JSON.json([cache_speech_cal, cache_noise_cal, cache_echo_cal]))
     end
     info("final report written to $(finalpath)")
 
