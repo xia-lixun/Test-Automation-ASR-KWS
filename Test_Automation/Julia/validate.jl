@@ -508,11 +508,13 @@ function clockdrift_measure(devmix_spk::Matrix{Float64}, sndmix_mic::Matrix{Floa
     # syncs = 10^(-6/20) * LibAudio.syncsymbol(800, 2000, 1, fss)
     # info("  syncs samples: $(length(syncs))")
     # note: sync is approximately invariant due to its short length
-    lbs,pk,pkf,y = LibAudio.extract_symbol_and_merge(r[:,1], sync, repeat+1, dither=-180)
-
-    pkfd = diff(pkf)
-    chrodrift_100sec = ((pkfd[end] - pkfd[1]) / (repeat-1))/fs
-    freqdrift_100sec = (size(period,1) - median(pkfd))/fs
-    
-    (fs * size(period,1)/median(pkfd), freqdrift_100sec, chrodrift_100sec)
+    measure = Array{Tuple{Float64, Float64, Float64},1}()
+    for k = 1:size(r,2)
+        lbs,pk,pkf,y = LibAudio.extract_symbol_and_merge(r[:,k], sync, repeat+1, dither=-180)
+        pkfd = diff(pkf)
+        chrodrift_100sec = ((pkfd[end] - pkfd[1]) / (repeat-1))/fs
+        freqdrift_100sec = (size(period,1) - median(pkfd))/fs
+        push!(measure, (fs * size(period,1)/median(pkfd), freqdrift_100sec, chrodrift_100sec))
+    end
+    measure
 end
