@@ -390,9 +390,10 @@ function auto(config)
 
     #
     # check serial port for turntable
-    rs232 = comportsel_radiobutton(Turntable.device())
-    Turntable.set_origin(rs232)
-
+    if cf["Use Turntable"]
+        rs232 = comportsel_radiobutton(Turntable.device())
+        Turntable.set_origin(rs232)
+    end
 
     # [1.0]
     # check the time validity of all reference mic calibrations
@@ -469,7 +470,7 @@ function auto(config)
             info(logt("[info] 3", "spl deviation = $(abs(dbspl_piston[1] - dbspl_piezo[1]))"))
         end
         dba_piston = LibAudio.spl(file_piston, r[:,i:i], r[:,i], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
-        if dba_piston < 35
+        if dba_piston[1] < 40
             info(logt("[info] 3", "room default $(dba_piston) dB(A) at mic $(p_rfmic[i])"))
         else
             error(logt("[erro] 3", "room too noisy $(dba_piston) dB(A) at mic $(p_rfmic[i])? halt"))
@@ -612,8 +613,10 @@ function auto(config)
             mkdir(joinpath(datpath, i["Topic"]))
 
             # set the orientation of the dut
-            Turntable.rotate(rs232, i["Orientation(deg)"], direction="CCW")
-            info(logt("[info] 7", "turntable operated"))
+            if cf["Use Turntable"]
+                Turntable.rotate(rs232, i["Orientation(deg)"], direction="CCW")
+                info(logt("[info] 7", "turntable operated"))
+            end
 
             # power cycle the dut
             Heartbeat.dutreset_client()
@@ -852,7 +855,7 @@ function auto(config)
         write(jid, JSON.json([cache_speech_cal, cache_noise_cal, cache_echo_cal]))
     end
     info(logt("[info] 11", "final report written to $(finalpath)"))
-
+    mv("at.log", joinpath(datpath, "at.log"), remove_destination=true)
     
     session_close()
     nothing

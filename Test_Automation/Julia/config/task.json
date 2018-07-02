@@ -4,10 +4,11 @@
     "Sample Rate": 48000,
     "Clock Drift Compensation": false,
     "Internal Signals": false,
+    "Use Turntable": false,
     "Score Server IP": "192.168.1.188",
 
     "Reference Mic": {
-        "Port": [9],
+        "Port": [9, 10],
         "Level Calibration": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib"
     },
     "Artificial Mouth": {
@@ -35,12 +36,12 @@
             "Orientation(deg)": 0.0,
 
             "Mouth":{
-                "Source": "C:\\Git\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\60Silence_3m25sSpeech.wav",
                 "Port": 7,
-                "Level(dBA)": 65,
-                "Calibration Start(sec)": 5.5,
-                "Calibration Stop(sec)": 6.611,
-                "Measure Port": 9 
+                "Level(dBA)": 70,
+                "Calibration Start(sec)": 65.5,
+                "Calibration Stop(sec)": 66.611,
+                "Measure Port": 9
             },
 
             "Noise": {
@@ -59,26 +60,27 @@
                 "Measure Port": 9
             }
         },
+
         {
-            "Topic": "Quiet",
+            "Topic": "Noise",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 0.0,
 
             "Mouth":{
-                "Source": "",
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\60Silence_3m25sSpeech.wav",
                 "Port": 7,
-                "Level(dBA)": 65,
-                "Calibration Start(sec)": 5.5,
-                "Calibration Stop(sec)": 6.611,
+                "Level(dBA)": 70,
+                "Calibration Start(sec)": 65.5,
+                "Calibration Stop(sec)": 66.611,
                 "Measure Port": 9 
             },
 
             "Noise": {
-                "Source": "C:\\Git\\WuW_HiBixby_40_bmt_03m25s_48k.wav",
-                "Level(dBA)": [52,52,52,52],
-                "Calibration Start(sec)": 60,
-                "Calibration Stop(sec)": 120,
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Noise\\60sTVNoise_3m25sTVNoise.wav",
+                "Level(dBA)": 58,
+                "Calibration Start(sec)": 120,
+                "Calibration Stop(sec)": 180,
                 "Measure Port": 9
             },
 
@@ -87,6 +89,70 @@
                 "Level(dBA)": 87,
                 "Calibration Start(sec)": 60,
                 "Calibration Stop(sec)": 120,
+                "Measure Port": 9
+            }
+        },
+
+        {
+            "Topic": "Echo",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientation(deg)": 0.0,
+
+            "Mouth":{
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\60Silence_3m25sSpeech.wav",
+                "Port": 7,
+                "Level(dBA)": 70,
+                "Calibration Start(sec)": 65.5,
+                "Calibration Stop(sec)": 66.611,
+                "Measure Port": 9
+            },
+
+            "Noise": {
+                "Source": "",
+                "Level(dBA)": 58,
+                "Calibration Start(sec)": 60,
+                "Calibration Stop(sec)": 120,
+                "Measure Port": 9
+            },
+
+            "Echo": {
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Echo\\60sPinkNoise_3m25sMusic.wav",
+                "Level(dBA)": 87,
+                "Calibration Start(sec)": 120,
+                "Calibration Stop(sec)": 180,
+                "Measure Port": 9
+            }
+        },
+
+        {
+            "Topic": "Echo_Noise",
+            "Room": "ETSI",
+            "Type": "KWS",
+            "Orientation(deg)": 0.0,
+
+            "Mouth":{
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\60Silence_3m25sSpeech.wav",
+                "Port": 7,
+                "Level(dBA)": 70,
+                "Calibration Start(sec)": 65.5,
+                "Calibration Stop(sec)": 66.611,
+                "Measure Port": 9
+            },
+
+            "Noise": {
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Noise\\60sTVNoise_3m25sTVNoise.wav",
+                "Level(dBA)": 58,
+                "Calibration Start(sec)": 120,
+                "Calibration Stop(sec)": 180,
+                "Measure Port": 9
+            },
+
+            "Echo": {
+                "Source": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\data\\TestSignal\\Echo\\60sPinkNoise_3m25sMusic.wav",
+                "Level(dBA)": 87,
+                "Calibration Start(sec)": 120,
+                "Calibration Stop(sec)": 180,
                 "Measure Port": 9
             }
         }
