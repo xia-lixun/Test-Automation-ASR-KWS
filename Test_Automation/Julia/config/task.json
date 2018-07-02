@@ -9,15 +9,15 @@
 
     "Reference Mic": {
         "Port": [9, 10],
-        "Level Calibration": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\calib"
+        "Level Calibration": "C:/Git/Test-Automation-ASR-KWS/Test_Automation/Julia/calib"
     },
     "Artificial Mouth": {
         "Port": [7],
-        "Equalization": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat"
+        "Equalization": "C:/Git/Test-Automation-ASR-KWS/Test_Automation/Julia/eq/equalization_20180619.mat"
     },
     "Noise Loudspeaker": {
         "Port": [3,4,5,6],
-        "Equalization": "C:\\Git\\Test-Automation-ASR-KWS\\Test_Automation\\Julia\\eq\\equalization_20180619.mat"
+        "Equalization": "C:/Git/Test-Automation-ASR-KWS/Test_Automation/Julia/eq/equalization_20180619.mat"
     },
 
 

@@ -67,7 +67,7 @@ end
 
 
 function ui_tk()
-    w = Tk.Toplevel("Automatic Audio Test Tool - CoC Suzhou",800, 600)
+    w = Tk.Toplevel("Automatic Audio Test Tool - CoC Suzhou", 800, 600)
     Tk.pack_stop_propagate(w)
    
 
@@ -104,8 +104,8 @@ function ui_tk()
     cb_dcdc = Checkbutton(w, "DUT Clock Drift Compensation")
     set_value(cb_dcdc, true)
     menu_add(omenu, cb_dcdc)
-
     menu_add(omenu, Separator(w))
+
     # rb = Radio(w, ["option 1", "option 2"])
     # set_value(rb, "option 1")
     # menu_add(omenu, rb)
@@ -135,29 +135,28 @@ function ui_tk()
     # system config 
     page1 = Tk.Frame(nb)
     Tk.page_add(page1, "System Configurations")
+
+    ##
     lf1 = Tk.Labelframe(page1, "Software Information")
     Tk.pack(lf1, expand=true, fill="both")
 
-    e_proj = Tk.Entry(lf1)
-    e_ver = Tk.Entry(lf1)
-    e_rate = Tk.Entry(lf1)
-    e_srv = Tk.Entry(lf1)
-    b_update = Tk.Button(lf1, "Update")
+    e_proj = Tk.Entry(lf1, width=95)
+    e_ver = Tk.Entry(lf1, width=95)
+    e_rate = Tk.Entry(lf1, width=95)
+    e_srv = Tk.Entry(lf1, width=95)
 
     Tk.formlayout(e_proj, "Project Name ")
     Tk.formlayout(e_ver, "Tool Version ")
     Tk.formlayout(e_rate, "Sample Rate ")
     Tk.formlayout(e_srv, "Score Server IP ")
-    Tk.formlayout(b_update, nothing)
-    Tk.focus(e_proj)
 
     
     ##
     lf2 = Tk.Labelframe(page1, "Reference Microphone")
     Tk.pack(lf2, expand=true, fill="both")
 
-    e_rfport = Tk.Entry(lf2)
-    e_rflevcal = Tk.Entry(lf2)
+    e_rfport = Tk.Entry(lf2, width=95)
+    e_rflevcal = Tk.Entry(lf2, width=95)
     b_rflevcal = Tk.Button(lf2, "Browse...")
     Tk.formlayout(e_rfport, "Port Assignment ")
     Tk.formlayout(e_rflevcal, "Level Calibration ")
@@ -173,7 +172,73 @@ function ui_tk()
     # if !isempty("SoundcardAPI.deviceCnt")
     #     snd_stat[:text] = "returned values" 
     # end
-    function callback_update_sw(path)
+
+
+    ##
+    lf3 = Tk.Labelframe(page1, "Artificial Mouth")
+    Tk.pack(lf3, expand=true, fill="both")
+
+    e_amport = Tk.Entry(lf3, width=95)
+    e_amlevcal = Tk.Entry(lf3, width=95)
+    b_amlevcal = Tk.Button(lf3, "Browse...")
+    Tk.formlayout(e_amport, "Port Assignment ")
+    Tk.formlayout(e_amlevcal, "Equalization Filters ")
+    Tk.formlayout(b_amlevcal, nothing)
+
+    function callback_update_artmouth(path)
+        conf["Artificial Mouth"]["Equalization"] = Tk.GetOpenFile()
+        Tk.set_value(e_amlevcal, conf["Artificial Mouth"]["Equalization"])
+    end
+    Tk.bind(b_amlevcal, "command", callback_update_artmouth)
+    
+    
+    ##
+    lf4 = Tk.Labelframe(page1, "Noise Loudspeaker")
+    Tk.pack(lf4, expand=true, fill="both")
+
+    e_nlport = Tk.Entry(lf4, width=95)
+    e_nllevcal = Tk.Entry(lf4, width=95)
+    b_nllevcal = Tk.Button(lf4, "Browse...")
+    Tk.formlayout(e_nlport, "Port Assignment ")
+    Tk.formlayout(e_nllevcal, "Equalization Filters ")
+    Tk.formlayout(b_nllevcal, nothing)
+
+    function callback_update_noiseldspk(path)
+        conf["Noise Loudspeaker"]["Equalization"] = Tk.GetOpenFile()
+        Tk.set_value(e_nllevcal, conf["Noise Loudspeaker"]["Equalization"])
+    end
+    Tk.bind(b_nllevcal, "command", callback_update_noiseldspk)
+
+
+
+    #
+    ##
+    ###
+    page2 = Frame(nb)
+    page_add(page2, "DUT Configurations")
+    
+    ##
+    lf5 = Tk.Labelframe(page2, "Versions For Test")
+    Tk.pack(lf5, expand=true, fill="both")
+
+    e_sfv = Tk.Entry(lf5, width=80)
+    e_hsv = Tk.Entry(lf5, width=80)
+    e_ctv = Tk.Entry(lf5, width=80)
+    e_stv = Tk.Entry(lf5, width=80)
+
+    Tk.formlayout(e_sfv, "Samsung Firmware Version ")
+    Tk.formlayout(e_hsv, "Harman Solution Version ")
+    Tk.formlayout(e_ctv, "Capture Tuning Version ")
+    Tk.formlayout(e_stv, "Speaker Tuning Version ")
+
+
+
+
+
+    #
+    ##
+    ###
+    function callback_conf2ui(path)
         if haskey(conf, "Project")
             Tk.set_value(e_proj, conf["Project"])
         else
@@ -196,23 +261,56 @@ function ui_tk()
         end
 
         if haskey(conf, "Reference Mic")
-            Tk.set_value(e_rfport, string(conf["Reference Mic"]["Port"]))
+            Tk.set_value(e_rfport, string(Int.(conf["Reference Mic"]["Port"])))
             Tk.set_value(e_rflevcal, string(conf["Reference Mic"]["Level Calibration"]))
         else
             Tk.set_value(e_rfport, "")
             Tk.set_value(e_rflevcal, "")
         end
+
+        if haskey(conf, "Artificial Mouth")
+            Tk.set_value(e_amport, string(Int.(conf["Artificial Mouth"]["Port"])))
+            Tk.set_value(e_amlevcal, string(conf["Artificial Mouth"]["Equalization"]))
+        else
+            Tk.set_value(e_amport, "")
+            Tk.set_value(e_amlevcal, "")
+        end
+
+        if haskey(conf, "Noise Loudspeaker")
+            Tk.set_value(e_nlport, string(Int.(conf["Noise Loudspeaker"]["Port"])))
+            Tk.set_value(e_nllevcal, string(conf["Noise Loudspeaker"]["Equalization"]))
+        else
+            Tk.set_value(e_nlport, "")
+            Tk.set_value(e_nllevcal, "")
+        end
+
+        if haskey(conf, "Samsung Firmware Version")
+            Tk.set_value(e_sfv, conf["Samsung Firmware Version"])
+        else
+            Tk.set_value(e_sfv, "")
+        end
+        if haskey(conf, "Harman Solution Version")
+            Tk.set_value(e_hsv, conf["Harman Solution Version"])
+        else
+            Tk.set_value(e_hsv, "")
+        end
+        if haskey(conf, "Capture Tuning Version")
+            Tk.set_value(e_ctv, conf["Capture Tuning Version"])
+        else
+            Tk.set_value(e_ctv, "")
+        end
+        if haskey(conf, "Speaker Tuning Version")
+            Tk.set_value(e_stv, conf["Speaker Tuning Version"])
+        else
+            Tk.set_value(e_stv, "")
+        end
+
         # msg = "You have a nice name $val"
         # Messagebox(w,  msg)
     end  
-    Tk.bind(b_update, "command", callback_update_sw)
+    menu_add(omenu, Separator(w))
+    menu_add(omenu, "Read Configurations", callback_conf2ui)
 
-
-
-
-    page2 = Frame(nb)
-    page_add(page2, "Impulse Response")
-    pack(Label(page2, "some labels"))
 
     set_value(nb,1)
 
@@ -237,4 +335,8 @@ function newtab_entry()
     val = Tk.get_value(e)
     Tk.destroy(w)
     val    
+end
+
+function str2array(T, s)
+    [parse(T, x) for x in split(s, ['[',',',']'])[2:end-1]]
 end
