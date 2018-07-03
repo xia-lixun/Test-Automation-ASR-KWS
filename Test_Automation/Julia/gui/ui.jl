@@ -1,73 +1,11 @@
 
-function demo_radio()
-    w = Toplevel()
-    f = Frame(w)
-    pack(f, expand=true, fill="both")
-    
-    l  = Label(f, "Which do you prefer?")
-    rb = Radio(f, ["apples", "oranges"])
-    b  = Button(f, "ok")
-    map(u -> pack(u, anchor="w"), (l, rb, b))     ## pack in left to right
-    
-    
-    function callback(path)
-      msg = (get_value(rb) == "apples") ? "Good choice!  An apple a day keeps the doctor away!" :
-                                          "Good choice!  Oranges are full of Vitamin C!"
-      Messagebox(w, msg)
-    end
-    
-    bind(b, "command", callback)
-end
-
-
-
-function demo_wintab()
-    w = Toplevel()
-    tcl("pack", "propagate", w, false)
-    nb = Notebook(w)
-    pack(nb, expand=true, fill="both")
-
-    page1 = Frame(nb)
-    page_add(page1, "Tab 1")
-    pack(Button(page1, "page 1"))
-
-    page2 = Frame(nb)
-    page_add(page2, "Tab 2")
-    lf1 = Labelframe(page2, "Group Region 1")
-    pack(lf1, expand=true, fill="both")
-    lf2 = Labelframe(page2, "Group Region 2")
-    pack(lf2, expand=true, fill="both")
-    pack(Label(page2, "Some label"))
-
-    set_value(nb, 2)		## position on page 2
-
-
-end
-
-
-function demo_progressbar()
-    w = Toplevel("Code Name")
-    f = Frame(w)
-    pack(f, expand=true, fill="both")
-    
-    pb = Progressbar(f)
-    pt = Label(f, "Progress 0%")
-    #pt[:textvariable] = get_value(pb)
-    
-    grid(pb,1,1,sticky="ew")
-    grid(pt,1,2,sticky="nw")
-    #grid_columnconfigure(f,1,weight=1)
-
-    set_value(pb, 77)
-    pt[:text] = "Progress 77%"
-end
 
 
 
 
 
-function ui_tk()
-    w = Tk.Toplevel("Automatic Audio Test Tool - CoC Suzhou", 800, 600)
+function ui()
+    w = Tk.Toplevel("Automatic Audio Test Tool - CoC Suzhou", 1000, 900)
     Tk.pack_stop_propagate(w)
    
 
@@ -87,46 +25,274 @@ function ui_tk()
         end
     end
 
-    menu_add(fmenu, "Open File...", loadconf)
-    menu_add(fmenu, "Save As...", saveconf)
-    menu_add(fmenu, Separator(w))
-    menu_add(fmenu, "Close Tool", (path)->destroy(w))
+    Tk.menu_add(fmenu, "Open File...", loadconf)
+    Tk.menu_add(fmenu, "Save As...", saveconf)
+    Tk.menu_add(fmenu, Tk.Separator(w))
+    Tk.menu_add(fmenu, "Close Tool", (path)->Tk.destroy(w))
     
 
-    cb_ut = Checkbutton(w, "Use Turntable")
-    set_value(cb_ut, true)
-    menu_add(omenu, cb_ut)
+    cb_ut = Tk.Checkbutton(w, "Use Turntable")
+    Tk.set_value(cb_ut, true)
+    Tk.menu_add(omenu, cb_ut)
 
-    cb_cdis = Checkbutton(w, "Capture DUT Internal Signals")
-    set_value(cb_cdis, true)
-    menu_add(omenu, cb_cdis)
+    cb_cdis = Tk.Checkbutton(w, "Capture DUT Internal Signals")
+    Tk.set_value(cb_cdis, true)
+    Tk.menu_add(omenu, cb_cdis)
     
-    cb_dcdc = Checkbutton(w, "DUT Clock Drift Compensation")
-    set_value(cb_dcdc, true)
-    menu_add(omenu, cb_dcdc)
-    menu_add(omenu, Separator(w))
+    cb_dcdc = Tk.Checkbutton(w, "DUT Clock Drift Compensation")
+    Tk.set_value(cb_dcdc, true)
+    Tk.menu_add(omenu, cb_dcdc)
+    Tk.menu_add(omenu, Tk.Separator(w))
 
     # rb = Radio(w, ["option 1", "option 2"])
     # set_value(rb, "option 1")
     # menu_add(omenu, rb)
     
-    menu_add(hmenu, "Help...", (path)->println("open help file"))
-    menu_add(hmenu, Separator(w))
-    menu_add(hmenu, "About", (path)->Messagebox(w, title="Author", message="Xia Lixun"))
+    Tk.menu_add(hmenu, "Help...", (path)->println("open help file"))
+    Tk.menu_add(hmenu, Tk.Separator(w))
+    Tk.menu_add(hmenu, "About", (path)->Tk.Messagebox(w, title="Author", message="Xia Lixun"))
 
 
 
     #
     ##
-    nb = Notebook(w)
-    pack(nb, expand=true, fill="both")
+    nb = Tk.Notebook(w)
+    Tk.pack(nb, expand=true, fill="both")
+
+
+    # task tabs
+    tasktab = Dict{String, Tk.Tk_Frame}()
+
+    lfa1 = Dict{String, Tk.Tk_Labelframe}()
+    t_room = Dict{String, Tk.Tk_Entry}()
+    t_type = Dict{String, Tk.Tk_Entry}()
+    t_orient = Dict{String, Tk.Tk_Entry}()
+    
+    lfa2 = Dict{String, Tk.Tk_Labelframe}()
+    t_mth_src = Dict{String, Tk.Tk_Entry}()
+    b_mth_src = Dict{String, Tk.Tk_Button}()
+    t_mth_port = Dict{String, Tk.Tk_Entry}()
+    t_mth_lev = Dict{String, Tk.Tk_Entry}()
+    t_mth_cal0 = Dict{String, Tk.Tk_Entry}()
+    t_mth_cal1 = Dict{String, Tk.Tk_Entry}()
+    t_mth_meas = Dict{String, Tk.Tk_Entry}()
+
+    lfa3 = Dict{String, Tk.Tk_Labelframe}()
+    t_nos_src = Dict{String, Tk.Tk_Entry}()
+    b_nos_src = Dict{String, Tk.Tk_Button}()
+    t_nos_lev = Dict{String, Tk.Tk_Entry}()
+    t_nos_cal0 = Dict{String, Tk.Tk_Entry}()
+    t_nos_cal1 = Dict{String, Tk.Tk_Entry}()
+    t_nos_meas = Dict{String, Tk.Tk_Entry}()
+
+    lfa4 = Dict{String, Tk.Tk_Labelframe}()
+    t_eco_src = Dict{String, Tk.Tk_Entry}()
+    b_eco_src = Dict{String, Tk.Tk_Button}()
+    t_eco_lev = Dict{String, Tk.Tk_Entry}()
+    t_eco_cal0 = Dict{String, Tk.Tk_Entry}()
+    t_eco_cal1 = Dict{String, Tk.Tk_Entry}()
+    t_eco_meas = Dict{String, Tk.Tk_Entry}()
+
+
+    function addconf(title)
+        stubmouth = Dict("Source"=>"", "Port"=>7, "Level(dBA)"=>65, "Calibration Start(sec)"=>65.5, "Calibration Stop(sec)"=>66.611, "Measure Port"=>9)
+        stubnoise = Dict("Source"=>"", "Level(dBA)"=>58, "Calibration Start(sec)"=>60.0, "Calibration Stop(sec)"=>120.0, "Measure Port"=>9)
+        stubecho = Dict("Source"=>"", "Level(dBA)"=>87, "Calibration Start(sec)"=>60.0, "Calibration Stop(sec)"=>120.0, "Measure Port"=>9)
+        stub = Dict("Topic"=>title, 
+                    "Room"=>"", 
+                    "Type"=>"", 
+                    "Orientation(deg)"=>0.0,
+                    "Mouth" => stubmouth,
+                    "Noise" => stubnoise,
+                    "Echo" => stubecho)
+        push!(conf["Task"], stub)
+    end
+
+    function addelement(frame, title)
+        ##
+        lfa1[title] = Tk.Labelframe(frame, "General Information")
+        Tk.pack(lfa1[title], expand=true, fill="both")
+
+        t_room[title] = Tk.Entry(lfa1[title], width=95)
+        t_type[title] = Tk.Entry(lfa1[title], width=95)
+        t_orient[title] = Tk.Entry(lfa1[title], width=95)
+        Tk.formlayout(t_room[title], "Room ")
+        Tk.formlayout(t_type[title], "Type ")
+        Tk.formlayout(t_orient[title], "DUT Orientation ")
+
+        ##
+        lfa2[title] = Tk.Labelframe(frame, "Mouth")
+        Tk.pack(lfa2[title], expand=true, fill="both")
+
+        t_mth_src[title] = Tk.Entry(lfa2[title], width=95)
+        b_mth_src[title] = Tk.Button(lfa2[title], "Browse...")
+        t_mth_port[title] = Tk.Entry(lfa2[title], width=95)
+        t_mth_lev[title] = Tk.Entry(lfa2[title], width=95)
+        t_mth_cal0[title] = Tk.Entry(lfa2[title], width=95)
+        t_mth_cal1[title] = Tk.Entry(lfa2[title], width=95)
+        t_mth_meas[title] = Tk.Entry(lfa2[title], width=95)
+
+        Tk.formlayout(t_mth_src[title], "Source ")
+        Tk.formlayout(b_mth_src[title], nothing)
+        Tk.formlayout(t_mth_port[title], "Play Port ")
+        Tk.formlayout(t_mth_lev[title], "Level (dBA) ")
+        Tk.formlayout(t_mth_cal0[title], "Calibration Start (sec) ")
+        Tk.formlayout(t_mth_cal1[title], "Calibration Stop (sec) ")
+        Tk.formlayout(t_mth_meas[title], "Meas. Mic Port ")
+
+        function callback_update_mthsrc(path)
+            Tk.set_value(t_mth_src[title], Tk.GetOpenFile())
+        end
+        Tk.bind(b_mth_src[title], "command", callback_update_mthsrc)
+
+
+        ##
+        lfa3[title] = Tk.Labelframe(frame, "Noise")
+        Tk.pack(lfa3[title], expand=true, fill="both")
+
+        t_nos_src[title] = Tk.Entry(lfa3[title], width=95)
+        b_nos_src[title] = Tk.Button(lfa3[title], "Browse...")
+        t_nos_lev[title] = Tk.Entry(lfa3[title], width=95)
+        t_nos_cal0[title] = Tk.Entry(lfa3[title], width=95)
+        t_nos_cal1[title] = Tk.Entry(lfa3[title], width=95)
+        t_nos_meas[title] = Tk.Entry(lfa3[title], width=95)
+
+        Tk.formlayout(t_nos_src[title], "Source ")
+        Tk.formlayout(b_nos_src[title], nothing)
+        Tk.formlayout(t_nos_lev[title], "Level (dBA) ")
+        Tk.formlayout(t_nos_cal0[title], "Calibration Start (sec) ")
+        Tk.formlayout(t_nos_cal1[title], "Calibration Stop (sec) ")
+        Tk.formlayout(t_nos_meas[title], "Meas. Mic Port ")
+
+        function callback_update_nossrc(path)
+            Tk.set_value(t_nos_src[title], Tk.GetOpenFile())
+        end
+        Tk.bind(b_nos_src[title], "command", callback_update_nossrc) 
+        
+
+        ##
+        lfa4[title] = Tk.Labelframe(frame, "Echo")
+        Tk.pack(lfa4[title], expand=true, fill="both")
+
+        t_eco_src[title] = Tk.Entry(lfa4[title], width=95)
+        b_eco_src[title] = Tk.Button(lfa4[title], "Browse...")
+        t_eco_lev[title] = Tk.Entry(lfa4[title], width=95)
+        t_eco_cal0[title] = Tk.Entry(lfa4[title], width=95)
+        t_eco_cal1[title] = Tk.Entry(lfa4[title], width=95)
+        t_eco_meas[title] = Tk.Entry(lfa4[title], width=95)
+
+        Tk.formlayout(t_eco_src[title], "Source ")
+        Tk.formlayout(b_eco_src[title], nothing)
+        Tk.formlayout(t_eco_lev[title], "Level (dBA) ")
+        Tk.formlayout(t_eco_cal0[title], "Calibration Start (sec) ")
+        Tk.formlayout(t_eco_cal1[title], "Calibration Stop (sec) ")
+        Tk.formlayout(t_eco_meas[title], "Meas. Mic Port ")
+
+        function callback_update_ecosrc(path)
+            Tk.set_value(t_eco_src[title], Tk.GetOpenFile())
+        end
+        Tk.bind(b_eco_src[title], "command", callback_update_ecosrc)         
+    end
+
+    function element_setvalue(task, title)
+        if haskey(task, "Room")
+            Tk.set_value(t_room[title], task["Room"])
+        else
+            Tk.set_value(t_room[title], "")
+        end
+        if haskey(task, "Type")
+            Tk.set_value(t_type[title], task["Type"])
+        else
+            Tk.set_value(t_type[title], "")
+        end
+        if haskey(task, "Orientation(deg)")
+            Tk.set_value(t_orient[title], string(task["Orientation(deg)"]))
+        else
+            Tk.set_value(t_orient[title], "")
+        end
+        if haskey(task, "Mouth")
+            Tk.set_value(t_mth_src[title], task["Mouth"]["Source"])
+            Tk.set_value(t_mth_port[title], string(task["Mouth"]["Port"]))
+            Tk.set_value(t_mth_lev[title], string(task["Mouth"]["Level(dBA)"]))
+            Tk.set_value(t_mth_cal0[title], string(task["Mouth"]["Calibration Start(sec)"]))
+            Tk.set_value(t_mth_cal1[title], string(task["Mouth"]["Calibration Stop(sec)"]))
+            Tk.set_value(t_mth_meas[title], string(task["Mouth"]["Measure Port"]))
+        else
+            Tk.set_value(t_mth_src[title], "")
+            Tk.set_value(t_mth_port[title], "")
+            Tk.set_value(t_mth_lev[title], "")
+            Tk.set_value(t_mth_cal0[title], "")
+            Tk.set_value(t_mth_cal1[title], "")
+            Tk.set_value(t_mth_meas[title], "")
+        end
+        if haskey(task, "Noise")
+            Tk.set_value(t_nos_src[title], task["Noise"]["Source"])
+            Tk.set_value(t_nos_lev[title], string(task["Noise"]["Level(dBA)"]))
+            Tk.set_value(t_nos_cal0[title], string(task["Noise"]["Calibration Start(sec)"]))
+            Tk.set_value(t_nos_cal1[title], string(task["Noise"]["Calibration Stop(sec)"]))
+            Tk.set_value(t_nos_meas[title], string(task["Noise"]["Measure Port"]))
+        else
+            Tk.set_value(t_nos_src[title], "")
+            Tk.set_value(t_nos_lev[title], "")
+            Tk.set_value(t_nos_cal0[title], "")
+            Tk.set_value(t_nos_cal1[title], "")
+            Tk.set_value(t_nos_meas[title], "")
+        end
+        if haskey(task, "Echo")
+            Tk.set_value(t_eco_src[title], task["Echo"]["Source"])
+            Tk.set_value(t_eco_lev[title], string(task["Echo"]["Level(dBA)"]))
+            Tk.set_value(t_eco_cal0[title], string(task["Echo"]["Calibration Start(sec)"]))
+            Tk.set_value(t_eco_cal1[title], string(task["Echo"]["Calibration Stop(sec)"]))
+            Tk.set_value(t_eco_meas[title], string(task["Echo"]["Measure Port"]))
+        else
+            Tk.set_value(t_eco_src[title], "")
+            Tk.set_value(t_eco_lev[title], "")
+            Tk.set_value(t_eco_cal0[title], "")
+            Tk.set_value(t_eco_cal1[title], "")
+            Tk.set_value(t_eco_meas[title], "")
+        end
+    end
+
+    function element_getvalue(task, title)
+        
+        task["Room"] = Tk.get_value(t_room[title])
+        task["Type"] = Tk.get_value(t_type[title])
+        task["Orientation(deg)"] = parse(Float64, Tk.get_value(t_orient[title]))
+
+        task["Mouth"]["Source"] = Tk.get_value(t_mth_src[title])
+        task["Mouth"]["Port"] = parse(Int64, Tk.get_value(t_mth_port[title]))
+        task["Mouth"]["Level(dBA)"] = parse(Float64, Tk.get_value(t_mth_lev[title]))
+        task["Mouth"]["Calibration Start(sec)"] = parse(Float64, Tk.get_value(t_mth_cal0[title]))
+        task["Mouth"]["Calibration Stop(sec)"] = parse(Float64, Tk.get_value(t_mth_cal1[title]))
+        task["Mouth"]["Measure Port"] = parse(Int64, Tk.get_value(t_mth_meas[title]))
+
+        task["Noise"]["Source"] = Tk.get_value(t_nos_src[title])
+        task["Noise"]["Level(dBA)"] = parse(Float64, Tk.get_value(t_nos_lev[title]))
+        task["Noise"]["Calibration Start(sec)"] = parse(Float64, Tk.get_value(t_nos_cal0[title]))
+        task["Noise"]["Calibration Stop(sec)"] = parse(Float64, Tk.get_value(t_nos_cal1[title]))
+        task["Noise"]["Measure Port"] = parse(Int64, Tk.get_value(t_nos_meas[title]))
+
+        task["Echo"]["Source"] = Tk.get_value(t_eco_src[title])
+        task["Echo"]["Level(dBA)"] = parse(Float64, Tk.get_value(t_eco_lev[title]))
+        task["Echo"]["Calibration Start(sec)"] = parse(Float64, Tk.get_value(t_eco_cal0[title]))
+        task["Echo"]["Calibration Stop(sec)"] = parse(Float64, Tk.get_value(t_eco_cal1[title]))
+        task["Echo"]["Measure Port"] = parse(Int64, Tk.get_value(t_eco_meas[title]))
+    end
+
 
     function newtasktab(path)
-        tasktab = Frame(nb)
-        page_add(tasktab, newtab_entry())
-        tasktab
+        id = newtab_entry()
+        if haskey(tasktab, id)
+            Tk.Messagebox(w, title="Warning", message="Test ID Already Exist! Nothing Added")
+        else
+            tab = Tk.Frame(nb)
+            Tk.page_add(tab, id)
+            addelement(tab, id)
+            addconf(id)
+            tasktab[id] = tab
+        end
     end
-    menu_add(omenu, "New Test Item...", newtasktab)
+    Tk.menu_add(omenu, "New Test Item...", newtasktab)
 
 
 
@@ -134,7 +300,7 @@ function ui_tk()
     #
     # system config 
     page1 = Tk.Frame(nb)
-    Tk.page_add(page1, "System Configurations")
+    Tk.page_add(page1, "System")
 
     ##
     lf1 = Tk.Labelframe(page1, "Software Information")
@@ -214,8 +380,8 @@ function ui_tk()
     #
     ##
     ###
-    page2 = Frame(nb)
-    page_add(page2, "DUT Configurations")
+    page2 = Tk.Frame(nb)
+    Tk.page_add(page2, "DUT")
     
     ##
     lf5 = Tk.Labelframe(page2, "Versions For Test")
@@ -234,11 +400,27 @@ function ui_tk()
 
 
 
-
     #
     ##
     ###
     function callback_conf2ui(path)
+        if haskey(conf, "Use Turntable")
+            Tk.set_value(cb_ut, conf["Use Turntable"])
+        else
+            Tk.set_value(cb_ut, false)
+        end
+        if haskey(conf, "Internal Signals")
+            Tk.set_value(cb_cdis, conf["Internal Signals"])
+        else
+            Tk.set_value(cb_cdis, false)
+        end
+        if haskey(conf, "Clock Drift Compensation")
+            Tk.set_value(cb_dcdc, conf["Clock Drift Compensation"])
+        else
+            Tk.set_value(cb_dcdc, false)
+        end
+
+
         if haskey(conf, "Project")
             Tk.set_value(e_proj, conf["Project"])
         else
@@ -305,20 +487,68 @@ function ui_tk()
             Tk.set_value(e_stv, "")
         end
 
-        # msg = "You have a nice name $val"
-        # Messagebox(w,  msg)
-    end  
-    menu_add(omenu, Separator(w))
-    menu_add(omenu, "Read Configurations", callback_conf2ui)
+        if haskey(conf, "Task")
+            for i in conf["Task"]
+                if !haskey(tasktab, i["Topic"])
+                    tab = Frame(nb)
+                    Tk.page_add(tab, i["Topic"])
+                    addelement(tab, i["Topic"])
+                    element_setvalue(i, i["Topic"])
+                    tasktab[i["Topic"]] = tab 
+                else
+                    element_setvalue(i, i["Topic"])
+                end
+            end
+        else
+            Tk.Messagebox(w, title="Warning", message = "No Tasks Found!")
+        end
+        Tk.Messagebox(w, title="Infomation", message = "Frontend updated to the backend")
+    end 
+    
+    function callback_ui2conf(path)
+        
+        conf["Use Turntable"] = Tk.get_value(cb_ut)
+        conf["Internal Signals"] = Tk.get_value(cb_cdis)
+        conf["Clock Drift Compensation"] = Tk.get_value(cb_dcdc)
+
+        conf["Project"] = Tk.get_value(e_proj)
+        conf["Version"] = Tk.get_value(e_ver)
+        conf["Sample Rate"] = parse(Int64, Tk.get_value(e_rate))
+        conf["Score Server IP"] = Tk.get_value(e_srv)
+
+        conf["Reference Mic"]["Port"] = str2array(Int, Tk.get_value(e_rfport))
+        conf["Reference Mic"]["Level Calibration"] = Tk.get_value(e_rflevcal)
+
+        conf["Artificial Mouth"]["Port"] = str2array(Int, Tk.get_value(e_amport))
+        conf["Artificial Mouth"]["Equalization"] = Tk.get_value(e_amlevcal)
+
+        conf["Noise Loudspeaker"]["Port"] = str2array(Int, Tk.get_value(e_nlport))
+        conf["Noise Loudspeaker"]["Equalization"] = Tk.get_value(e_nllevcal)
+
+        conf["Samsung Firmware Version"] = Tk.get_value(e_sfv)
+        conf["Harman Solution Version"] = Tk.get_value(e_hsv)
+        conf["Capture Tuning Version"] = Tk.get_value(e_ctv)
+        conf["Speaker Tuning Version"] = Tk.get_value(e_stv)
+
+        for i in conf["Task"]
+            element_getvalue(i, i["Topic"])
+        end
+        Tk.Messagebox(w, title="Infomation", message = "Backend updated to the frontend")
 
 
-    set_value(nb,1)
+    end 
 
-    # function callback(path)
-    #     Messagebox(w, title="OK", message="good")
-    # end
-    # bind(page1_b, "command", callback)
+    Tk.menu_add(omenu, Separator(w))
+    Tk.menu_add(omenu, "Read Configurations", callback_conf2ui)
+    Tk.menu_add(omenu, "Write Conficurations", callback_ui2conf)
+    Tk.set_value(nb,1)
+
 end
+
+
+
+
+
 
 
 function newtab_entry()
@@ -338,5 +568,6 @@ function newtab_entry()
 end
 
 function str2array(T, s)
-    [parse(T, x) for x in split(s, ['[',',',']'])[2:end-1]]
+    y = split(s, ['[',',',']',' '])
+    [parse(T, x) for x in y[.!isempty.(y)]]
 end

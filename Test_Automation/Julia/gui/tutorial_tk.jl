@@ -297,3 +297,71 @@ function demo_panewindow()
     set_value(pg, 100)                 ## set divider between first two pixels
     tcl(pg, "sashpos", 1, 200)	   ## others set the tcl way
 end
+
+
+
+
+
+
+function demo_radio()
+    w = Toplevel()
+    f = Frame(w)
+    pack(f, expand=true, fill="both")
+    
+    l  = Label(f, "Which do you prefer?")
+    rb = Radio(f, ["apples", "oranges"])
+    b  = Button(f, "ok")
+    map(u -> pack(u, anchor="w"), (l, rb, b))     ## pack in left to right
+    
+    
+    function callback(path)
+      msg = (get_value(rb) == "apples") ? "Good choice!  An apple a day keeps the doctor away!" :
+                                          "Good choice!  Oranges are full of Vitamin C!"
+      Messagebox(w, msg)
+    end
+    
+    bind(b, "command", callback)
+end
+
+
+
+function demo_wintab()
+    w = Toplevel()
+    tcl("pack", "propagate", w, false)
+    nb = Notebook(w)
+    pack(nb, expand=true, fill="both")
+
+    page1 = Frame(nb)
+    page_add(page1, "Tab 1")
+    pack(Button(page1, "page 1"))
+
+    page2 = Frame(nb)
+    page_add(page2, "Tab 2")
+    lf1 = Labelframe(page2, "Group Region 1")
+    pack(lf1, expand=true, fill="both")
+    lf2 = Labelframe(page2, "Group Region 2")
+    pack(lf2, expand=true, fill="both")
+    pack(Label(page2, "Some label"))
+
+    set_value(nb, 2)		## position on page 2
+
+
+end
+
+
+function demo_progressbar()
+    w = Toplevel("Code Name")
+    f = Frame(w)
+    pack(f, expand=true, fill="both")
+    
+    pb = Progressbar(f)
+    pt = Label(f, "Progress 0%")
+    #pt[:textvariable] = get_value(pb)
+    
+    grid(pb,1,1,sticky="ew")
+    grid(pt,1,2,sticky="nw")
+    #grid_columnconfigure(f,1,weight=1)
+
+    set_value(pb, 77)
+    pt[:text] = "Progress 77%"
+end
