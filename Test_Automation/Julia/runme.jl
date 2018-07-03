@@ -3,15 +3,6 @@ using Plots
 include("auto.jl")
 
 
-gr()
-display(plot(zeros(100)))
-# auto(Tk.GetOpenFile())
-ui()
-
-
-
-
-
 
 function ui()
     w = Tk.Toplevel("Automatic Audio Test Tool - CoC Suzhou", 1000, 900)
@@ -585,3 +576,8 @@ end
 
 
 
+
+gr()
+display(plot(zeros(100)))
+# auto(Tk.GetOpenFile())
+ui()
