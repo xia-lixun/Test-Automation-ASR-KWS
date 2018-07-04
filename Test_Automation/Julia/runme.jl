@@ -12,7 +12,7 @@ function ui()
     m = Tk.Menu(w)
     fmenu = Tk.menu_add(m, "File")
     omenu = Tk.menu_add(m, "Options")
-    rmenu = Tk.menu_add(m, "Run...")
+    rmenu = Tk.menu_add(m, "Run")
     hmenu = Tk.menu_add(m, "Help")
 
 
@@ -492,7 +492,7 @@ function ui()
         if haskey(conf, "Task")
             for i in conf["Task"]
                 if !haskey(tasktab, i["Topic"])
-                    tab = Frame(nb)
+                    tab = Tk.Frame(nb)
                     Tk.page_add(tab, i["Topic"])
                     addelement(tab, i["Topic"])
                     element_setvalue(i, i["Topic"])
@@ -504,7 +504,7 @@ function ui()
         else
             Tk.Messagebox(w, title="Warning", message = "No Tasks Found!")
         end
-        Tk.Messagebox(w, title="Infomation", message = "Frontend updated to the backend")
+        Tk.Messagebox(w, title="Infomation", message = "Frontend updated")
     end 
     
     function callback_ui2conf(path)
@@ -535,12 +535,12 @@ function ui()
         for i in conf["Task"]
             element_getvalue(i, i["Topic"])
         end
-        Tk.Messagebox(w, title="Infomation", message = "Backend updated to the frontend")
+        Tk.Messagebox(w, title="Infomation", message = "Backend updated")
 
 
     end 
 
-    Tk.menu_add(omenu, Separator(w))
+    Tk.menu_add(omenu, Tk.Separator(w))
     Tk.menu_add(omenu, "Read Configurations", callback_conf2ui)
     Tk.menu_add(omenu, "Write Conficurations", callback_ui2conf)
     Tk.set_value(nb,1)
