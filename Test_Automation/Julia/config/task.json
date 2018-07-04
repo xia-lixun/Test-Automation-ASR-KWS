@@ -5,6 +5,11 @@
     "Clock Drift Compensation": false,
     "Internal Signals": false,
     "Use Turntable": false,
+    "Measure Room default SPL": true,
+    "Noise Loudspeaker EQ check": true,
+    "Artificial Mouth EQ check": true,
+    "Measure Impulse Response - DUT to Ref. Mic": true,
+    "Measure Impulse Response - Mouth to DUT Raw Mic": true,
     "Score Server IP": "192.168.1.188",
 
     "Reference Mic": {

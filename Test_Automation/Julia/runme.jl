@@ -33,21 +33,45 @@ function ui()
     
 
     cb_ut = Tk.Checkbutton(w, "Use Turntable")
-    Tk.set_value(cb_ut, true)
+    Tk.set_value(cb_ut, false)
     Tk.menu_add(omenu, cb_ut)
 
     cb_cdis = Tk.Checkbutton(w, "Capture DUT Internal Signals")
-    Tk.set_value(cb_cdis, true)
+    Tk.set_value(cb_cdis, false)
     Tk.menu_add(omenu, cb_cdis)
-    
+
     cb_dcdc = Tk.Checkbutton(w, "DUT Clock Drift Compensation")
-    Tk.set_value(cb_dcdc, true)
+    Tk.set_value(cb_dcdc, false)
     Tk.menu_add(omenu, cb_dcdc)
+
+    cb_mrdl = Tk.Checkbutton(w, "Measure Room default SPL")
+    Tk.set_value(cb_mrdl, true)
+    Tk.menu_add(omenu, cb_mrdl)
+    cb_nlec = Tk.Checkbutton(w, "Noise Loudspeaker EQ check")
+    Tk.set_value(cb_nlec, true)
+    Tk.menu_add(omenu, cb_nlec)
+    cb_amec = Tk.Checkbutton(w, "Artificial Mouth EQ check")
+    Tk.set_value(cb_amec, true)
+    Tk.menu_add(omenu, cb_amec)
+    cb_mirdr = Tk.Checkbutton(w, "Measure Impulse Response - DUT to Ref. Mic")
+    Tk.set_value(cb_mirdr, true)
+    Tk.menu_add(omenu, cb_mirdr)
+    cb_mirmd = Tk.Checkbutton(w, "Measure Impulse Response - Mouth to DUT Raw Mic")
+    Tk.set_value(cb_mirmd, true)
+    Tk.menu_add(omenu, cb_mirmd)
+
     Tk.menu_add(omenu, Tk.Separator(w))
 
     # rb = Radio(w, ["option 1", "option 2"])
     # set_value(rb, "option 1")
     # menu_add(omenu, rb)
+    function run_conf(path)
+        open("conf.json", "w") do fid
+            write(fid, JSON.json(conf))
+        end
+        auto("conf.json")
+    end
+    Tk.menu_add(rmenu, "Run", run_conf)
     Tk.menu_add(rmenu, "Run From File...", (path)->auto(Tk.GetOpenFile()))
     
     Tk.menu_add(hmenu, "Help...", (path)->println("open help file"))
@@ -421,6 +445,32 @@ function ui()
         else
             Tk.set_value(cb_dcdc, false)
         end
+        #
+        if haskey(conf, "Measure Room default SPL")
+            Tk.set_value(cb_mrdl, conf["Measure Room default SPL"])
+        else
+            Tk.set_value(cb_mrdl, true)
+        end
+        if haskey(conf, "Noise Loudspeaker EQ check")
+            Tk.set_value(cb_nlec, conf["Noise Loudspeaker EQ check"])
+        else
+            Tk.set_value(cb_nlec, false)
+        end
+        if haskey(conf, "Artificial Mouth EQ check")
+            Tk.set_value(cb_amec, conf["Artificial Mouth EQ check"])
+        else
+            Tk.set_value(cb_amec, false)
+        end
+        if haskey(conf, "Measure Impulse Response - DUT to Ref. Mic")
+            Tk.set_value(cb_mirdr, conf["Measure Impulse Response - DUT to Ref. Mic"])
+        else
+            Tk.set_value(cb_mirdr, false)
+        end
+        if haskey(conf, "Measure Impulse Response - Mouth to DUT Raw Mic")
+            Tk.set_value(cb_mirmd, conf["Measure Impulse Response - Mouth to DUT Raw Mic"])
+        else
+            Tk.set_value(cb_mirmd, false)
+        end
 
 
         if haskey(conf, "Project")
@@ -512,6 +562,12 @@ function ui()
         conf["Use Turntable"] = Tk.get_value(cb_ut)
         conf["Internal Signals"] = Tk.get_value(cb_cdis)
         conf["Clock Drift Compensation"] = Tk.get_value(cb_dcdc)
+
+        conf["Measure Room default SPL"] = Tk.get_value(cb_mrdl)
+        conf["Noise Loudspeaker EQ check"] = Tk.get_value(cb_nlec)
+        conf["Artificial Mouth EQ check"] = Tk.get_value(cb_amec)
+        conf["Measure Impulse Response - DUT to Ref. Mic"] = Tk.get_value(cb_mirdr)
+        conf["Measure Impulse Response - Mouth to DUT Raw Mic"] = Tk.get_value(cb_mirmd)
 
         conf["Project"] = Tk.get_value(e_proj)
         conf["Version"] = Tk.get_value(e_ver)
