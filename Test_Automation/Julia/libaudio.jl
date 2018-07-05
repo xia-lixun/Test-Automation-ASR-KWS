@@ -323,7 +323,8 @@ using SHA
     # v: indicates vector <: AbstractFloat
     energy(v) = x.^2
     intensity(v) = abs.(v)
-    zero_crossing_rate(v) = floor.((abs.(diff(sign.(v)))) ./ 2)
+    binary_sign(x) = x > 0 ? 1.0 : -1.0
+    zero_crossing_rate(v) = floor.((abs.(diff(binary_sign.(v)))) ./ 2)
 
 
     function short_term(f, x::AbstractArray{T,1}, p::Frame1; 

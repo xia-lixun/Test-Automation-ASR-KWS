@@ -119,17 +119,23 @@ function auto(config)
         dont_care, millisec_elapse_piezo = levelcalibrate_retrievelatest(path, hwinfo = piezo)
 
         # if time check fails do level calibration update
+        function refmic_calibration_check(snap)
+            assert(size(snap,2) == 1)
+            period_sps = diff(find(x->x==1.0, LibAudio.zero_crossing_rate(snap[:,1])))
+            info(logt("[info] 11", "calibrate ref. mic samples/period distribution $(Set(period_sps))"))
+            info(logt("[info] 11", "calibrate ref. mic frequency $(fs/median(period_sps))"))
+            display(plot(snap[1:192,:]))
+            nothing
+        end
         if millisec_elapse_piston >= Dates.Millisecond(Dates.Day(1)) || millisec_elapse_piezo >= Dates.Millisecond(Dates.Day(1))
 
             Tk.Messagebox(title="Action", message="Please tether 42AA to reference mic port $p, press OK to start recording [请用42AA校准标麦$p, 连接好后点击OK开始录音]")
-            snap = levelcalibrate_updateref(sndmix_mic, 30, fs, path, hwinfo=piston)
-            display(plot(snap))
+            refmic_calibration_check(levelcalibrate_updateref(sndmix_mic, 30, fs, path, hwinfo=piston))
             # barometer_correction = barrometer_entry()
 
             Tk.Messagebox(title="Action", message="Please tether 42AB to reference mic port $p, press OK to start recording [请用42AB校准标麦$p, 连接好后点击OK开始录音]")
-            snap = levelcalibrate_updateref(sndmix_mic, 30, fs, path, hwinfo=piezo)
-            display(plot(snap))
-
+            refmic_calibration_check(levelcalibrate_updateref(sndmix_mic, 30, fs, path, hwinfo=piezo))
+            
             Tk.Messagebox(title="Information", message="Reference mic calibrated, please put mic back to position, then press OK [标麦校准成功，请把标麦放回录音位置，点击OK继续]")
         end
     end
@@ -227,7 +233,7 @@ function auto(config)
                                             eq=[(eqload(eqam["mouth_$(p)_b"]), eqload(eqam["mouth_$(p)_a"]))])
 
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot( 20log10.(f01[1:16384,:].+eps()) ))
+            display(plot(((1:16384)-1)/32768*fs, 20log10.(f01[1:16384,:].+eps()), xscale = :log10))
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
             
@@ -270,7 +276,7 @@ function auto(config)
         f2, h2, d2, t2 = impulse_response(devmix_spk, sndmix_mic, fs=fs, fd=fsd, t_ess=10, t_decay=3, atten = -15, syncatten = -7, mode=(:fileio,:asio))
 
         f2v = abs.(fft(f2[1:32768,:],1)) / 32768
-        display(plot( 20log10.(f2v[1:16384,:].+eps()) ))
+        display(plot(((1:16384)-1)/32768*fs, 20log10.(f2v[1:16384,:].+eps()), xscale = :log10))
         # h2v = abs.(fft(h2,1)) / size(h2,1)
         # display(plot( 20log10.(h2v[1:div(size(h2v,1),2),:].+eps()) ))
 
@@ -294,7 +300,7 @@ function auto(config)
 
             # display(plot(f3[1:65536,:]))
             f3v = abs.(fft(f3[1:32768,:],1)) / 32768
-            display(plot( 20log10.(f3v[1:16384,:].+eps()) ))        
+            display(plot(((1:16384)-1)/32768*fsd, 20log10.(f3v[1:16384,:].+eps()), xscale = :log10))        
             # h3v = abs.(fft(h3,1)) / size(h3,1)
             # display(plot( 20log10.(h3v[1:div(size(h3v,1),2),:].+eps()) ))
 

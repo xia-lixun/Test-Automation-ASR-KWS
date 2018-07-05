@@ -276,7 +276,7 @@ function levelcalibrate_updateref(mixmic::Matrix{Float64}, seconds, fs, folderpa
     r = SoundcardAPI.record(round(Int64, seconds * fs), mixmic, fs)
     t = replace(string(now()), [':','.'], '-')
     wavwrite(r, joinpath(folderpath, t * "+" * hwinfo2string(hwinfo) * ".wav"), Fs=fs, nbits=32)
-    r[1:192,:]
+    r
 end
 
 
