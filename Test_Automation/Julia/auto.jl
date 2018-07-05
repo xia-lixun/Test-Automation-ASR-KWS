@@ -122,8 +122,8 @@ function auto(config)
         function refmic_calibration_check(snap)
             assert(size(snap,2) == 1)
             period_sps = diff(find(x->x==1.0, LibAudio.zero_crossing_rate(snap[:,1])))
-            info(logt("[info] 11", "calibrate ref. mic samples/period distribution $(Set(period_sps))"))
-            info(logt("[info] 11", "calibrate ref. mic frequency $(fs/median(period_sps))"))
+            info(logt("[info] 11", "calibrate ref. mic samples/half-period distribution $(Set(period_sps))"))
+            info(logt("[info] 11", "calibrate ref. mic frequency $(fs/median(period_sps)/2)"))
             display(plot(snap[1:192,:]))
             nothing
         end
@@ -205,7 +205,7 @@ function auto(config)
                                             eq=[(eqload(eqnl["ldspk_$(p)_b"]), eqload(eqnl["ldspk_$(p)_a"]))])
             
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot( 20log10.(f01[1:16384,:].+eps()) ))
+            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10))
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
 
@@ -233,7 +233,7 @@ function auto(config)
                                             eq=[(eqload(eqam["mouth_$(p)_b"]), eqload(eqam["mouth_$(p)_a"]))])
 
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot(((1:16384)-1)/32768*fs, 20log10.(f01[1:16384,:].+eps()), xscale = :log10))
+            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10))
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
             
@@ -276,7 +276,7 @@ function auto(config)
         f2, h2, d2, t2 = impulse_response(devmix_spk, sndmix_mic, fs=fs, fd=fsd, t_ess=10, t_decay=3, atten = -15, syncatten = -7, mode=(:fileio,:asio))
 
         f2v = abs.(fft(f2[1:32768,:],1)) / 32768
-        display(plot(((1:16384)-1)/32768*fs, 20log10.(f2v[1:16384,:].+eps()), xscale = :log10))
+        display(plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10))
         # h2v = abs.(fft(h2,1)) / size(h2,1)
         # display(plot( 20log10.(h2v[1:div(size(h2v,1),2),:].+eps()) ))
 
@@ -300,7 +300,7 @@ function auto(config)
 
             # display(plot(f3[1:65536,:]))
             f3v = abs.(fft(f3[1:32768,:],1)) / 32768
-            display(plot(((1:16384)-1)/32768*fsd, 20log10.(f3v[1:16384,:].+eps()), xscale = :log10))        
+            display(plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10))        
             # h3v = abs.(fft(h3,1)) / size(h3,1)
             # display(plot( 20log10.(h3v[1:div(size(h3v,1),2),:].+eps()) ))
 
