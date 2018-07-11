@@ -41,6 +41,7 @@ end
 
 function auto(config)
     
+    timezero = now()
     info(logt("[info] 0", "== test started =="))
     #
     # reading parameters
@@ -316,13 +317,15 @@ function auto(config)
 
     #
     # make unique measurement folder, after all sanity checks ok
-    datpath = replace(string(now()), [':','.'], '-')
+    datpath = replace(string(timezero), [':','.'], '-')
     mkdir(datpath)
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
     score_future = Array{Future}(length(cf["Task"]))
+
     cache_speech_cal = Dict{Any,Float64}()
     cache_noise_cal = Dict{Any,Float64}()
     cache_echo_cal = Dict{Any,Float64}()
+    trace_levels = Array{String}()
 
 
     for (seq,i) in enumerate(cf["Task"])
@@ -400,6 +403,7 @@ function auto(config)
 
                 speech_eq .= 10^(speech_gain/20) .* speech_eq
                 cache_speech_cal[i["Mouth"]] = speech_gain
+                push!(trace_levels, "Mouth: $(speech_gain) dBFS --- $(dba_measure) dB(A)")
                 info(logt("[info] 9", "speech_eq level newly calibrated and cached... $(speech_gain) -> $(dba_measure) dB(A)"))
             end
 
@@ -427,6 +431,7 @@ function auto(config)
 
                     noise_eq .= 10^(noise_gain/20) .* noise_eq
                     cache_noise_cal[i["Noise"]] = noise_gain
+                    push!(trace_levels, "Noise: $(noise_gain) dBFS --- $(dba_measure) dB(A)")
                     info(logt("[info] 9", "noise_eq level newly calibrated and cached... $(noise_gain) -> $(dba_measure) dB(A)"))
                 end
             else
@@ -461,7 +466,8 @@ function auto(config)
                     echo .= 10^(echo_gain/20) .* echo
                     wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
                     cache_echo_cal[i["Echo"]] = echo_gain
-                    info(logt("[info] 9", "echo source detected, level newly calibrated and cached... $(echo_gain) -> $(dba_measure)"))
+                    push!(trace_levels, "Echo: $(echo_gain) dBFS --- $(dba_measure) dB(A)")
+                    info(logt("[info] 9", "echo source detected, level newly calibrated and cached... $(echo_gain) -> $(dba_measure) dB(A)"))
                 end
             else
                 info(logt("[info] 9", "echo source not present, skip level calibration"))
@@ -554,9 +560,10 @@ function auto(config)
     
     # [2.8]
     # form the final report based on individual reports
+    score_mat = zeros(Int, 4, 4)
     finalpath = joinpath(datpath,"report-final.txt")
     open(finalpath,"w") do ffid
-        write(ffid, "$(now())\n\n")
+        write(ffid, "$(timezero)\n\n")
         write(ffid, "Samsung Firmware Version: $(cf["Samsung Firmware Version"])\n")
         write(ffid, "Harman Solution Version: $(cf["Harman Solution Version"])\n")
         write(ffid, "Capture Tuning Version: $(cf["Capture Tuning Version"])\n")
@@ -571,6 +578,7 @@ function auto(config)
                 write(ffid, k * "\n")
             end
             write(ffid, "====\n")
+            update_score_matrix(score_mat, s[1])
         end
     end
     open(joinpath(datpath,"gain-specification.json"),"w") do jid
@@ -578,6 +586,18 @@ function auto(config)
     end
     info(logt("[info] 11", "final report written to $(finalpath)"))
     mv("at.log", joinpath(datpath, "at.log"), remove_destination=true)
+    
+
+    # add pdf report
+    # note the MikTeX support: try to build the /MikTeX/report_template.tex to make sure
+    # third-party packages are installed
+    if KwsAsr.report_pdf(score_mat, cf, timezero, trace_levels)
+        info(logt("[info] 12", "pdf report generated"))
+    else
+        warn(logt("[warn] 3", "pdf report generation failed, please use the text version"))
+    end
+    mv("report.pdf", joinpath(datpath, "report.pdf"), remove_destination=true)
+
     
     session_close()
     nothing
@@ -639,9 +659,49 @@ end
 
 
 
+# 4x4 score matrix:
+#
+#             0.5m   1m   3m   5m
+# Quiet
+# Noise
+# Echo
+# Echo+Noise
+function update_score_matrix(sm::Matrix{Int}, s::String)
+    
+    # get the value
+    # col = match(Regex(":"), s)
+    # score = parse(Int, match(Regex("[0-9]+"), s, col.offset))
+    score = parse(Int, basename(s))
 
+    # gestimate the position in score matrix
+    x = 0
+    y = 0
+    ls = lowercase(s)
+    if ismatch(Regex("0.5m"),ls) || ismatch(Regex("50cm"),ls) || ismatch(Regex("500mm"),ls)
+        x = 1
+    elseif ismatch(Regex("1m"),ls) || ismatch(Regex("100cm"),ls) || ismatch(Regex("1000mm"),ls)
+        x = 2
+    elseif ismatch(Regex("3m"),ls) || ismatch(Regex("300cm"),ls) || ismatch(Regex("3000mm"),ls)
+        x = 3
+    elseif ismatch(Regex("5m"),ls) || ismatch(Regex("500cm"),ls) || ismatch(Regex("5000mm"),ls)
+        x = 4
+    end
 
+    if ismatch(Regex("quiet"),ls)
+        y = 1
+    elseif ismatch(Regex("noise"),ls) && !ismatch(Regex("echo"),ls)
+        y = 2
+    elseif ismatch(Regex("echo"),ls) && !ismatch(Regex("noise"),ls)
+        y = 3
+    elseif ismatch(Regex("echo"),ls) && ismatch(Regex("noise"),ls)
+        x = 4
+    end
 
+    assert(x > 0)
+    assert(y > 0)
+    sm[x,y] = score
+    nothing
+end
 
 
 
