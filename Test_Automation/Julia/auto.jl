@@ -320,12 +320,12 @@ function auto(config)
     datpath = replace(string(timezero), [':','.'], '-')
     mkdir(datpath)
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
-    score_future = Array{Future}(length(cf["Task"]))
+    score_future = Array{Future,1}(length(cf["Task"]))
 
     cache_speech_cal = Dict{Any,Float64}()
     cache_noise_cal = Dict{Any,Float64}()
     cache_echo_cal = Dict{Any,Float64}()
-    trace_levels = Array{String}()
+    trace_levels = Array{String,1}()
 
 
     for (seq,i) in enumerate(cf["Task"])
@@ -585,9 +585,8 @@ function auto(config)
         write(jid, JSON.json([cache_speech_cal, cache_noise_cal, cache_echo_cal]))
     end
     info(logt("[info] 11", "final report written to $(finalpath)"))
-    mv("at.log", joinpath(datpath, "at.log"), remove_destination=true)
     
-
+    
     # add pdf report
     # note the MikTeX support: try to build the /MikTeX/report_template.tex to make sure
     # third-party packages are installed
@@ -598,7 +597,9 @@ function auto(config)
     end
     mv("report.pdf", joinpath(datpath, "report.pdf"), remove_destination=true)
 
+
     
+    mv("at.log", joinpath(datpath, "at.log"), remove_destination=true)
     session_close()
     nothing
 end
@@ -678,28 +679,28 @@ function update_score_matrix(sm::Matrix{Int}, s::String)
     y = 0
     ls = lowercase(s)
     if ismatch(Regex("0.5m"),ls) || ismatch(Regex("50cm"),ls) || ismatch(Regex("500mm"),ls)
-        x = 1
+        y = 1
     elseif ismatch(Regex("1m"),ls) || ismatch(Regex("100cm"),ls) || ismatch(Regex("1000mm"),ls)
-        x = 2
+        y = 2
     elseif ismatch(Regex("3m"),ls) || ismatch(Regex("300cm"),ls) || ismatch(Regex("3000mm"),ls)
-        x = 3
+        y = 3
     elseif ismatch(Regex("5m"),ls) || ismatch(Regex("500cm"),ls) || ismatch(Regex("5000mm"),ls)
-        x = 4
+        y = 4
     end
 
     if ismatch(Regex("quiet"),ls)
-        y = 1
+        x = 1
     elseif ismatch(Regex("noise"),ls) && !ismatch(Regex("echo"),ls)
-        y = 2
+        x = 2
     elseif ismatch(Regex("echo"),ls) && !ismatch(Regex("noise"),ls)
-        y = 3
+        x = 3
     elseif ismatch(Regex("echo"),ls) && ismatch(Regex("noise"),ls)
         x = 4
     end
 
-    assert(x > 0)
-    assert(y > 0)
-    sm[x,y] = score
+    if x > 0 && y > 0
+        sm[x,y] = score
+    end
     nothing
 end
 

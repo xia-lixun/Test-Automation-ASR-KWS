@@ -23,6 +23,11 @@ module KwsAsr
     end
 
 
+
+
+
+
+
     # time_alpha:  the begining time of the test 
     # conf:        configuration tuple parsed from JSON
     # sm:          score matrix
@@ -31,7 +36,7 @@ module KwsAsr
         try
             # this is the portable MikTeX installation
             # additional packages must also be installed
-            tex = "D:/MikTeX/texmfs/install/miktex/bin/pdflatex.exe"
+            tex = "C:/MikTeX/texmfs/install/miktex/bin/pdflatex.exe"
             open("report.tex", "w") do fid
                 write(fid, "\\documentclass{article}\n")
                 write(fid, "\\usepackage[table]{xcolor}\n")

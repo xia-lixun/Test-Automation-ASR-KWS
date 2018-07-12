@@ -13,7 +13,7 @@
     "Score Server IP": "192.168.1.188",
 
     "Reference Mic": {
-        "Port": [9, 10],
+        "Port": [9],
         "Level Calibration": "C:/Git/Test-Automation-ASR-KWS/Test_Automation/Julia/calib"
     },
     "Artificial Mouth": {
@@ -35,7 +35,7 @@
 
     "Task":[
         {
-            "Topic": "Quiet",
+            "Topic": "Quiet_50cm",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 0.0,
@@ -67,7 +67,7 @@
         },
 
         {
-            "Topic": "Noise",
+            "Topic": "Noise_50cm",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 0.0,
@@ -99,7 +99,7 @@
         },
 
         {
-            "Topic": "Echo",
+            "Topic": "Echo_50cm",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 0.0,
@@ -131,7 +131,7 @@
         },
 
         {
-            "Topic": "Echo_Noise",
+            "Topic": "Echo_Noise_50cm",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 0.0,

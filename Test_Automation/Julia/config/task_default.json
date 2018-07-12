@@ -35,7 +35,7 @@
 
     "Task":[
         {
-            "Topic": "Default",
+            "Topic": "Quiet_0.5m",
             "Room": "ETSI",
             "Type": "KWS",
             "Orientation(deg)": 0.0,
