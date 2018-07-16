@@ -31,8 +31,9 @@ module KwsAsr
     # time_alpha:  the begining time of the test 
     # conf:        configuration tuple parsed from JSON
     # sm:          score matrix
+    # dm:          orientation matrix in degree
     # history:     level calibration history
-    function report_pdf(sm::Matrix{Int}, dm::Matrix{Int}, conf, time_alpha, history, images)
+    function report_pdf(sm::Matrix{Int}, dm::Matrix{Float64}, conf, time_alpha, history, images)
         try
             # this is the portable MikTeX installation
             # additional packages must also be installed

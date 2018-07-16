@@ -347,7 +347,7 @@ function auto(config)
     cache_speech_cal = Dict{Any,Float64}()
     cache_noise_cal = Dict{Any,Float64}()
     cache_echo_cal = Dict{Any,Float64}()
-    orient_mat = zeros(Int, 4, 4)
+    orient_mat = zeros(Float64, 4, 4)
 
 
     for (seq,i) in enumerate(cf["Task"])
@@ -729,7 +729,7 @@ function update_score_matrix!(sm::Matrix{Int}, s::String)
 end
 
 
-function update_orient_matrix!(dm::Matrix{Int}, s::String, degree)
+function update_orient_matrix!(dm::Matrix{Float64}, s::String, degree)
     
     # gestimate the position in matrix
     x = 0
