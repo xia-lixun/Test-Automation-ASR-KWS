@@ -41,6 +41,7 @@ end
 
 function auto(config)
     
+    trace_report = Dict{String, String}()
     timezero = now()
     info(logt("[info] 0", "== test started =="))
     #
@@ -54,9 +55,13 @@ function auto(config)
     n_rfmic = length(p_rfmic)
     n_mouth = length(p_mouth)
     n_ldspk = length(p_ldspk)
-    info(logt("[info] 1", "reference microphone port = $(p_rfmic)"))
+    
+    info(logt("[info] 1", "reference microphone ports = $(p_rfmic)"))
     info(logt("[info] 1", "artificial mouth ports = $(p_mouth)"))
     info(logt("[info] 1", "noise loudspeaker ports = $(p_ldspk)"))
+    trace_report["ref. microphone port(s)"] = "$(p_rfmic)"
+    trace_report["artificial mouth port(s)"] = "$(p_mouth)"
+    trace_report["noise loudspeaker port(s)"] = "$(p_ldspk)"
 
     #
     # preparation of workers
@@ -183,6 +188,7 @@ function auto(config)
             dba_piston = LibAudio.spl(file_piston, r[:,i:i], r[:,i], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
             if dba_piston[1] < 40
                 info(logt("[info] 3", "room default $(dba_piston) dB(A) at mic $(p_rfmic[i])"))
+                trace_report["Room default level"] = "$(dba_piston) dB(A) at mic $(p_rfmic[i])"
             else
                 error(logt("[erro] 3", "room too noisy $(dba_piston) dB(A) at mic $(p_rfmic[i])? halt"))
             end
@@ -206,18 +212,19 @@ function auto(config)
                                             eq=[(eqload(eqnl["ldspk_$(p)_b"]), eqload(eqnl["ldspk_$(p)_a"]))])
             
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10))
+            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Noise loudspeakers EQ check"))
+            png("ldspk$(p)eq")
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
 
-            tf["ldspk_$(p)_f0"] = f0
-            tf["ldspk_$(p)_f1"] = f1
-            tf["ldspk_$(p)_h0"] = h0
-            tf["ldspk_$(p)_h1"] = h1
-            tf["ldspk_$(p)_d0"] = d0
-            tf["ldspk_$(p)_d1"] = d1
-            tf["ldspk_$(p)_t0"] = t0
-            tf["ldspk_$(p)_t1"] = t1
+            tf["ldspk$(p)_f0"] = f0
+            tf["ldspk$(p)_f1"] = f1
+            tf["ldspk$(p)_h0"] = h0
+            tf["ldspk$(p)_h1"] = h1
+            tf["ldspk$(p)_d0"] = d0
+            tf["ldspk$(p)_d1"] = d1
+            tf["ldspk$(p)_t0"] = t0
+            tf["ldspk$(p)_t1"] = t1
             # placeholder: abnormaly detection, pca?
         end
         info(logt("[info] 4", "noise loudspeaker eq checked"))
@@ -234,18 +241,19 @@ function auto(config)
                                             eq=[(eqload(eqam["mouth_$(p)_b"]), eqload(eqam["mouth_$(p)_a"]))])
 
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10))
+            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Artificial mouth EQ check"))
+            png("mouth$(p)eq")
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
             
-            tf["mouth_$(p)_f0"] = f0
-            tf["mouth_$(p)_f1"] = f1
-            tf["mouth_$(p)_h0"] = h0
-            tf["mouth_$(p)_h1"] = h1
-            tf["mouth_$(p)_d0"] = d0
-            tf["mouth_$(p)_d1"] = d1
-            tf["mouth_$(p)_t0"] = t0
-            tf["mouth_$(p)_t1"] = t1
+            tf["mouth$(p)_f0"] = f0
+            tf["mouth$(p)_f1"] = f1
+            tf["mouth$(p)_h0"] = h0
+            tf["mouth$(p)_h1"] = h1
+            tf["mouth$(p)_d0"] = d0
+            tf["mouth$(p)_d1"] = d1
+            tf["mouth$(p)_t0"] = t0
+            tf["mouth$(p)_t1"] = t1
             # placeholder: abnormaly detection?
         end
         info(logt("[info] 4", "artificial mouth eq checked"))
@@ -265,6 +273,9 @@ function auto(config)
             info(logt("[info] 5", "time drift of dut: $(k[2])/100 sec"))
             info(logt("[info] 5", "temp drift of dut: $(k[3])/100 sec"))
             info(logt("[info] 5", "dut freqency: $(k[1]) samples per second"))
+            trace_report["Time drift estimate of DUT master clock"] = "$(k[2])/100 seconds"
+            trace_report["Temperature drift estimate of DUT master clock"] = "$(k[3])/100 seconds"
+            trace_report["DUT sample rate estimate"] = "$(k[1]) samples per second"
         end
         fsd = median([x[1] for x in drift])
     end
@@ -277,7 +288,8 @@ function auto(config)
         f2, h2, d2, t2 = impulse_response(devmix_spk, sndmix_mic, fs=fs, fd=fsd, t_ess=10, t_decay=3, atten = -15, syncatten = -7, mode=(:fileio,:asio))
 
         f2v = abs.(fft(f2[1:32768,:],1)) / 32768
-        display(plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10))
+        display(plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: DUT loudspeakers to ref. mic(s)"))
+        png("dutrefmic")
         # h2v = abs.(fft(h2,1)) / size(h2,1)
         # display(plot( 20log10.(h2v[1:div(size(h2v,1),2),:].+eps()) ))
 
@@ -301,7 +313,8 @@ function auto(config)
 
             # display(plot(f3[1:65536,:]))
             f3v = abs.(fft(f3[1:32768,:],1)) / 32768
-            display(plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10))        
+            display(plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10, xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: mouth(s) to DUT mic(s)"))
+            png("mouth$(p)dutrawmic")
             # h3v = abs.(fft(h3,1)) / size(h3,1)
             # display(plot( 20log10.(h3v[1:div(size(h3v,1),2),:].+eps()) ))
 
@@ -319,17 +332,27 @@ function auto(config)
     # make unique measurement folder, after all sanity checks ok
     datpath = replace(string(timezero), [':','.'], '-')
     mkdir(datpath)
-    matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
-    score_future = Array{Future,1}(length(cf["Task"]))
 
+    matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
+    for p in p_mouth
+        mv("mouth$(p)eq.png", joinpath(datpath,"mouth$(p)eq.png"), remove_destination=true)
+        mv("mouth$(p)dutrawmic.png", joinpath(datpath,"mouth$(p)dutrawmic.png"), remove_destination=true)
+    end
+    for p in p_ldspk
+        mv("ldspk$(p)eq.png", joinpath(datpath,"ldspk$(p)eq.png"), remove_destination=true)
+    end
+    mv("dutrefmic.png", joinpath(datpath, "dutrefmic.png"), remove_destination=true)
+
+    score_future = Array{Future,1}(length(cf["Task"]))
     cache_speech_cal = Dict{Any,Float64}()
     cache_noise_cal = Dict{Any,Float64}()
     cache_echo_cal = Dict{Any,Float64}()
-    trace_levels = Array{String,1}()
+    orient_mat = zeros(Int, 4, 4)
 
 
     for (seq,i) in enumerate(cf["Task"])
 
+        update_orient_matrix!(orient_mat, i["Topic"], i["Orientation(deg)"])
         status = false
         dutalive = false
         while !dutalive
@@ -403,7 +426,7 @@ function auto(config)
 
                 speech_eq .= 10^(speech_gain/20) .* speech_eq
                 cache_speech_cal[i["Mouth"]] = speech_gain
-                push!(trace_levels, "Mouth: $(speech_gain) dBFS --- $(dba_measure) dB(A)")
+                trace_report["Mouth level calibrated"] = "$(speech_gain) dB \\textrightarrow $(dba_measure) dB(A)"
                 info(logt("[info] 9", "speech_eq level newly calibrated and cached... $(speech_gain) -> $(dba_measure) dB(A)"))
             end
 
@@ -431,7 +454,7 @@ function auto(config)
 
                     noise_eq .= 10^(noise_gain/20) .* noise_eq
                     cache_noise_cal[i["Noise"]] = noise_gain
-                    push!(trace_levels, "Noise: $(noise_gain) dBFS --- $(dba_measure) dB(A)")
+                    trace_report["Noise level calibrated"] = "$(noise_gain) dB \\textrightarrow $(dba_measure) dB(A)"
                     info(logt("[info] 9", "noise_eq level newly calibrated and cached... $(noise_gain) -> $(dba_measure) dB(A)"))
                 end
             else
@@ -466,7 +489,7 @@ function auto(config)
                     echo .= 10^(echo_gain/20) .* echo
                     wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
                     cache_echo_cal[i["Echo"]] = echo_gain
-                    push!(trace_levels, "Echo: $(echo_gain) dBFS --- $(dba_measure) dB(A)")
+                    trace_report["Echo level calibrated"] = "$(echo_gain) dB \\textrightarrow $(dba_measure) dB(A)"
                     info(logt("[info] 9", "echo source detected, level newly calibrated and cached... $(echo_gain) -> $(dba_measure) dB(A)"))
                 end
             else
@@ -558,6 +581,7 @@ function auto(config)
         score_future[seq] = remotecall(KwsAsr.score_kws, wid[2], cf["Score Server IP"], joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), joinpath(datpath, i["Topic"]))
     end
     
+
     # [2.8]
     # form the final report based on individual reports
     score_mat = zeros(Int, 4, 4)
@@ -578,7 +602,7 @@ function auto(config)
                 write(ffid, k * "\n")
             end
             write(ffid, "====\n")
-            update_score_matrix(score_mat, s[1])
+            update_score_matrix!(score_mat, s[1])
         end
     end
     open(joinpath(datpath,"gain-specification.json"),"w") do jid
@@ -590,7 +614,7 @@ function auto(config)
     # add pdf report
     # note the MikTeX support: try to build the /MikTeX/report_template.tex to make sure
     # third-party packages are installed
-    if KwsAsr.report_pdf(score_mat, cf, timezero, trace_levels)
+    if KwsAsr.report_pdf(score_mat, orient_mat, cf, timezero, trace_report, replace.(LibAudio.list(datpath, t=".png"),"\\", "/"))
         info(logt("[info] 12", "pdf report generated"))
     else
         warn(logt("[warn] 3", "pdf report generation failed, please use the text version"))
@@ -667,7 +691,7 @@ end
 # Noise
 # Echo
 # Echo+Noise
-function update_score_matrix(sm::Matrix{Int}, s::String)
+function update_score_matrix!(sm::Matrix{Int}, s::String)
     
     # get the value
     # col = match(Regex(":"), s)
@@ -705,4 +729,35 @@ function update_score_matrix(sm::Matrix{Int}, s::String)
 end
 
 
+function update_orient_matrix!(dm::Matrix{Int}, s::String, degree)
+    
+    # gestimate the position in matrix
+    x = 0
+    y = 0
+    ls = lowercase(s)
+    if ismatch(Regex("0.5m"),ls) || ismatch(Regex("50cm"),ls) || ismatch(Regex("500mm"),ls)
+        y = 1
+    elseif ismatch(Regex("1m"),ls) || ismatch(Regex("100cm"),ls) || ismatch(Regex("1000mm"),ls)
+        y = 2
+    elseif ismatch(Regex("3m"),ls) || ismatch(Regex("300cm"),ls) || ismatch(Regex("3000mm"),ls)
+        y = 3
+    elseif ismatch(Regex("5m"),ls) || ismatch(Regex("500cm"),ls) || ismatch(Regex("5000mm"),ls)
+        y = 4
+    end
+
+    if ismatch(Regex("quiet"),ls)
+        x = 1
+    elseif ismatch(Regex("noise"),ls) && !ismatch(Regex("echo"),ls)
+        x = 2
+    elseif ismatch(Regex("echo"),ls) && !ismatch(Regex("noise"),ls)
+        x = 3
+    elseif ismatch(Regex("echo"),ls) && ismatch(Regex("noise"),ls)
+        x = 4
+    end
+
+    if x > 0 && y > 0
+        dm[x,y] = degree
+    end
+    nothing
+end
 
