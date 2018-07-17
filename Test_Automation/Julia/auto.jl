@@ -59,9 +59,9 @@ function auto(config)
     info(logt("[info] 1", "reference microphone ports = $(p_rfmic)"))
     info(logt("[info] 1", "artificial mouth ports = $(p_mouth)"))
     info(logt("[info] 1", "noise loudspeaker ports = $(p_ldspk)"))
-    trace_report["ref. microphone port(s)"] = "$(p_rfmic)"
-    trace_report["artificial mouth port(s)"] = "$(p_mouth)"
-    trace_report["noise loudspeaker port(s)"] = "$(p_ldspk)"
+    trace_report["ref. microphone port(s)"] = "$(Int.(p_rfmic))"
+    trace_report["artificial mouth port(s)"] = "$(Int.(p_mouth))"
+    trace_report["noise loudspeaker port(s)"] = "$(Int.(p_ldspk))"
 
     #
     # preparation of workers
@@ -188,7 +188,7 @@ function auto(config)
             dba_piston = LibAudio.spl(file_piston, r[:,i:i], r[:,i], 1, fs, calibrator_reading=parse(Float64,piston[:dba]), weighting="a")
             if dba_piston[1] < 40
                 info(logt("[info] 3", "room default $(dba_piston) dB(A) at mic $(p_rfmic[i])"))
-                trace_report["Room default level"] = "$(dba_piston) dB(A) at mic $(p_rfmic[i])"
+                trace_report["Room default level"] = "\\textless $(dba_piston) dB(A) at mic $(p_rfmic[i])"
             else
                 error(logt("[erro] 3", "room too noisy $(dba_piston) dB(A) at mic $(p_rfmic[i])? halt"))
             end
@@ -212,8 +212,10 @@ function auto(config)
                                             eq=[(eqload(eqnl["ldspk_$(p)_b"]), eqload(eqnl["ldspk_$(p)_a"]))])
             
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Noise loudspeakers EQ check"))
-            png("ldspk$(p)eq")
+            fig = plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Noise loudspeakers EQ check")
+            png(fig, "ldspk$(p)eq")
+            display(fig)
+
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
 
@@ -241,8 +243,10 @@ function auto(config)
                                             eq=[(eqload(eqam["mouth_$(p)_b"]), eqload(eqam["mouth_$(p)_a"]))])
 
             f01 = abs.(fft([f0[1:32768,:] f1[1:32768,:]],1)) / 32768
-            display(plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Artificial mouth EQ check"))
-            png("mouth$(p)eq")
+            fig = plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Artificial mouth EQ check")
+            png(fig, "mouth$(p)eq")
+            display(fig)
+            
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
             
@@ -273,9 +277,9 @@ function auto(config)
             info(logt("[info] 5", "time drift of dut: $(k[2])/100 sec"))
             info(logt("[info] 5", "temp drift of dut: $(k[3])/100 sec"))
             info(logt("[info] 5", "dut freqency: $(k[1]) samples per second"))
-            trace_report["Time drift estimate of DUT master clock"] = "$(k[2])/100 seconds"
-            trace_report["Temperature drift estimate of DUT master clock"] = "$(k[3])/100 seconds"
-            trace_report["DUT sample rate estimate"] = "$(k[1]) samples per second"
+            trace_report["DUT clock drift estimate"] = "$(k[2])/100 seconds"
+            trace_report["DUT clock temp. drift estimate"] = "$(k[3])/100 seconds"
+            trace_report["DUT sample rate estimate"] = "$(k[1]) samples/second"
         end
         fsd = median([x[1] for x in drift])
     end
@@ -288,8 +292,10 @@ function auto(config)
         f2, h2, d2, t2 = impulse_response(devmix_spk, sndmix_mic, fs=fs, fd=fsd, t_ess=10, t_decay=3, atten = -15, syncatten = -7, mode=(:fileio,:asio))
 
         f2v = abs.(fft(f2[1:32768,:],1)) / 32768
-        display(plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: DUT loudspeakers to ref. mic(s)"))
-        png("dutrefmic")
+        fig = plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: DUT loudspeakers to ref. mic(s)")
+        png(fig, "dutrefmic")
+        display(fig)
+        
         # h2v = abs.(fft(h2,1)) / size(h2,1)
         # display(plot( 20log10.(h2v[1:div(size(h2v,1),2),:].+eps()) ))
 
@@ -313,8 +319,10 @@ function auto(config)
 
             # display(plot(f3[1:65536,:]))
             f3v = abs.(fft(f3[1:32768,:],1)) / 32768
-            display(plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10, xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: mouth(s) to DUT mic(s)"))
-            png("mouth$(p)dutrawmic")
+            fig = plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10, xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: mouth(s) to DUT mic(s)")
+            png(fig, "mouth$(p)dutrawmic")
+            display(fig)
+            
             # h3v = abs.(fft(h3,1)) / size(h3,1)
             # display(plot( 20log10.(h3v[1:div(size(h3v,1),2),:].+eps()) ))
 
