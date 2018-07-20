@@ -273,13 +273,13 @@ function auto(config)
         devmix_spk = zeros(1,2)
         devmix_spk[1,1] = 1.0
         drift = clockdrift_measure(devmix_spk, sndmix_mic)  # (fsd, freqdrift, tempdrift)
-        for k in drift
+        for (ik,k) in enumerate(drift)
             info(logt("[info] 5", "time drift of dut: $(k[2])/100 sec"))
             info(logt("[info] 5", "temp drift of dut: $(k[3])/100 sec"))
             info(logt("[info] 5", "dut freqency: $(k[1]) samples per second"))
-            trace_report["DUT clock drift estimate"] = "$(k[2])/100 seconds"
-            trace_report["DUT clock temp. drift estimate"] = "$(k[3])/100 seconds"
-            trace_report["DUT sample rate estimate"] = "$(k[1]) samples/second"
+            trace_report["DUT clock drift estimate - $(ik)"] = "$(k[2])/100 seconds"
+            trace_report["DUT clock temp. drift estimate - $(ik)"] = "$(k[3])/100 seconds"
+            trace_report["DUT sample rate estimate - $(ik)"] = "$(k[1]) samples/second"
         end
         fsd = median([x[1] for x in drift])
     end
@@ -293,7 +293,7 @@ function auto(config)
 
         f2v = abs.(fft(f2[1:32768,:],1)) / 32768
         fig = plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: DUT loudspeakers to ref. mic(s)")
-        png(fig, "dutrefmic")
+        #png(fig, "dutrefmic")
         display(fig)
         
         # h2v = abs.(fft(h2,1)) / size(h2,1)
@@ -320,7 +320,7 @@ function auto(config)
             # display(plot(f3[1:65536,:]))
             f3v = abs.(fft(f3[1:32768,:],1)) / 32768
             fig = plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10, xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: mouth(s) to DUT mic(s)")
-            png(fig, "mouth$(p)dutrawmic")
+            #png(fig, "mouth$(p)dutrawmic")
             display(fig)
             
             # h3v = abs.(fft(h3,1)) / size(h3,1)
@@ -344,12 +344,12 @@ function auto(config)
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
     for p in p_mouth
         mv("mouth$(p)eq.png", joinpath(datpath,"mouth$(p)eq.png"), remove_destination=true)
-        mv("mouth$(p)dutrawmic.png", joinpath(datpath,"mouth$(p)dutrawmic.png"), remove_destination=true)
+        #mv("mouth$(p)dutrawmic.png", joinpath(datpath,"mouth$(p)dutrawmic.png"), remove_destination=true)
     end
     for p in p_ldspk
         mv("ldspk$(p)eq.png", joinpath(datpath,"ldspk$(p)eq.png"), remove_destination=true)
     end
-    mv("dutrefmic.png", joinpath(datpath, "dutrefmic.png"), remove_destination=true)
+    #mv("dutrefmic.png", joinpath(datpath, "dutrefmic.png"), remove_destination=true)
 
     score_future = Array{Future,1}(length(cf["Task"]))
     cache_speech_cal = Dict{Any,Float64}()
@@ -434,7 +434,7 @@ function auto(config)
 
                 speech_eq .= 10^(speech_gain/20) .* speech_eq
                 cache_speech_cal[i["Mouth"]] = speech_gain
-                trace_report["Mouth level calibrated"] = "$(speech_gain) dB \\textrightarrow $(dba_measure) dB(A)"
+                trace_report["Mouth level calibrated - $(seq)"] = "$(speech_gain) dB \\textrightarrow $(dba_measure) dB(A)"
                 info(logt("[info] 9", "speech_eq level newly calibrated and cached... $(speech_gain) -> $(dba_measure) dB(A)"))
             end
 
@@ -462,7 +462,7 @@ function auto(config)
 
                     noise_eq .= 10^(noise_gain/20) .* noise_eq
                     cache_noise_cal[i["Noise"]] = noise_gain
-                    trace_report["Noise level calibrated"] = "$(noise_gain) dB \\textrightarrow $(dba_measure) dB(A)"
+                    trace_report["Noise level calibrated - $(seq)"] = "$(noise_gain) dB \\textrightarrow $(dba_measure) dB(A)"
                     info(logt("[info] 9", "noise_eq level newly calibrated and cached... $(noise_gain) -> $(dba_measure) dB(A)"))
                 end
             else
@@ -497,7 +497,7 @@ function auto(config)
                     echo .= 10^(echo_gain/20) .* echo
                     wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
                     cache_echo_cal[i["Echo"]] = echo_gain
-                    trace_report["Echo level calibrated"] = "$(echo_gain) dB \\textrightarrow $(dba_measure) dB(A)"
+                    trace_report["Echo level calibrated - $(seq)"] = "$(echo_gain) dB \\textrightarrow $(dba_measure) dB(A)"
                     info(logt("[info] 9", "echo source detected, level newly calibrated and cached... $(echo_gain) -> $(dba_measure) dB(A)"))
                 end
             else
