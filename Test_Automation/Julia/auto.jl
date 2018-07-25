@@ -17,15 +17,13 @@ using Plots
 using WAV
 import Tk
 include("validate.jl")
+tool_ver = v"0.1.1-release+b1"
 
 
 
 
 
-# level = "[info] int"
-#         "[warn] int"
-#         "[erro] int"
-# "[info] 3:2018-06-30 11-03-29:something happened"
+# "[info/warn/erro] int:2018-06-30 11-03-29:something happened"
 function logt(level, message)
     t = replace("$(now())",[':','.'],'-')
     open("at.log","a") do fid
@@ -35,6 +33,14 @@ function logt(level, message)
 end
 
 
+function delay(x)
+    for i = 1:x
+        print(".")
+        sleep(1)
+    end
+    print(".\n")
+end
+
 
 
 
@@ -43,12 +49,14 @@ function auto(config)
     
     trace_report = Dict{String, String}()
     timezero = now()
-    info(logt("[info] 0", "== test started =="))
-    #
-    # reading parameters
+    datpath = replace(string(timezero), [':','.'], '-')
+    mkdir(datpath)
+    info(logt("[info] 0", "\n\n== test started =="))
+    
+
     cf = JSON.parsefile(config)
-    assert(VersionNumber(cf["Version"]) == v"0.0.1-release+b1")
     fs = cf["Sample Rate"]
+    crd = cf["Calibrator Refresh Day"]
     p_rfmic = cf["Reference Mic"]["Port"]
     p_mouth = cf["Artificial Mouth"]["Port"]
     p_ldspk = cf["Noise Loudspeaker"]["Port"]
@@ -56,6 +64,7 @@ function auto(config)
     n_mouth = length(p_mouth)
     n_ldspk = length(p_ldspk)
     
+    assert(VersionNumber(cf["Version"]) == tool_ver)
     info(logt("[info] 1", "reference microphone ports = $(p_rfmic)"))
     info(logt("[info] 1", "artificial mouth ports = $(p_mouth)"))
     info(logt("[info] 1", "noise loudspeaker ports = $(p_ldspk)"))
@@ -63,7 +72,7 @@ function auto(config)
     trace_report["artificial mouth port(s)"] = "$(Int.(p_mouth))"
     trace_report["noise loudspeaker port(s)"] = "$(Int.(p_ldspk))"
 
-    #
+    
     # preparation of workers
     session_open(2)
     wid = workers()
@@ -73,15 +82,15 @@ function auto(config)
     # [0.9]
     # check device-under-test availability
     Heartbeat.dutreset_client()
-    sleep(5)
+    delay(cf["Start Up Music/Speech Duration(sec)"])
     while !Device.luxisalive()
         warn(logt("[warn] 0", "device is not available? reboot the dut"))
         Heartbeat.dutreset_client()
-        sleep(5)
+        delay(cf["Start Up Music/Speech Duration(sec)"])
     end
     info(logt("[info] 2", "dut reboot ok"))
     
-    #
+    
     # check soundcard availability, then
     # read parameters from the soundcard
     digest = SoundcardAPI.device()
@@ -94,7 +103,7 @@ function auto(config)
     sndout_max = min(10, parse(Int64, m.match))
     info(logt("[info] 2", "soundcard i/o max = $(sndin_max)/$(sndout_max)"))
 
-    #
+
     # check serial port for turntable
     if cf["Use Turntable"]
         rs232 = comportsel_radiobutton(Turntable.device())
@@ -133,8 +142,8 @@ function auto(config)
             display(plot(snap[1:192,:]))
             nothing
         end
-        if millisec_elapse_piston >= Dates.Millisecond(Dates.Day(1)) || millisec_elapse_piezo >= Dates.Millisecond(Dates.Day(1))
-
+        
+        if millisec_elapse_piston >= Dates.Millisecond(Dates.Day(crd)) || millisec_elapse_piezo >= Dates.Millisecond(Dates.Day(crd))
             Tk.Messagebox(title="Action", message="Please tether 42AA to reference mic port $p, press OK to start recording [请用42AA校准标麦$p, 连接好后点击OK开始录音]")
             refmic_calibration_check(levelcalibrate_updateref(sndmix_mic, 30, fs, path, hwinfo=piston))
             # barometer_correction = barrometer_entry()
@@ -155,10 +164,8 @@ function auto(config)
         sndmix_mic[p_rfmic[i], i] = 1.0
     end
 
-    #
-    #
-    if cf["Measure Room default SPL"]
 
+    if cf["Measure Room default SPL"]
         sndmix_spk = zeros(n_ldspk+n_mouth, sndout_max)
         for i = 1:n_ldspk
             sndmix_spk[i, p_ldspk[i]] = 1.0
@@ -175,8 +182,8 @@ function auto(config)
             info(logt("[info] 3", "use latest calibration files..."))
             info(logt("[info] 3", file_piston))
             info(logt("[info] 3", file_piezo))
-            assert(millisec_elapse_piston <= Dates.Millisecond(Dates.Day(1)))
-            assert(millisec_elapse_piezo <= Dates.Millisecond(Dates.Day(1)))
+            assert(millisec_elapse_piston <= Dates.Millisecond(Dates.Day(crd)))
+            assert(millisec_elapse_piezo <= Dates.Millisecond(Dates.Day(crd)))
         
             dbspl_piston = LibAudio.spl(file_piston, r[:,i:i], r[:,i], 1, fs, calibrator_reading=parse(Float64,piston[:db])+barometer_correction)
             dbspl_piezo = LibAudio.spl(file_piezo, r[:,i:i], r[:,i], 1, fs, calibrator_reading=parse(Float64,piezo[:db]))
@@ -202,6 +209,7 @@ function auto(config)
     eqnl = matread(cf["Noise Loudspeaker"]["Equalization"])
     eqam = matread(cf["Artificial Mouth"]["Equalization"])
 
+
     if cf["Noise Loudspeaker EQ check"]
         for p in p_ldspk
             sndmix_spk = zeros(1, sndout_max)
@@ -215,7 +223,7 @@ function auto(config)
             fig = plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Noise loudspeakers EQ check")
             png(fig, "ldspk$(p)eq")
             display(fig)
-
+            mv("ldspk$(p)eq.png", joinpath(datpath,"ldspk$(p)eq.png"), remove_destination=true)
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
 
@@ -227,7 +235,6 @@ function auto(config)
             tf["ldspk$(p)_d1"] = d1
             tf["ldspk$(p)_t0"] = t0
             tf["ldspk$(p)_t1"] = t1
-            # placeholder: abnormaly detection, pca?
         end
         info(logt("[info] 4", "noise loudspeaker eq checked"))
     end
@@ -246,7 +253,7 @@ function auto(config)
             fig = plot(((2:16384)-1)/32768*fs, 20log10.(f01[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Artificial mouth EQ check")
             png(fig, "mouth$(p)eq")
             display(fig)
-            
+            mv("mouth$(p)eq.png", joinpath(datpath,"mouth$(p)eq.png"), remove_destination=true)
             # h01 = abs.(fft([h0 h1],1)) / size(h0,1)
             # display(plot( 20log10.(h01[1:div(size(h01,1),2),:].+eps()) ))
             
@@ -258,7 +265,6 @@ function auto(config)
             tf["mouth$(p)_d1"] = d1
             tf["mouth$(p)_t0"] = t0
             tf["mouth$(p)_t1"] = t1
-            # placeholder: abnormaly detection?
         end
         info(logt("[info] 4", "artificial mouth eq checked"))
     end
@@ -293,9 +299,9 @@ function auto(config)
 
         f2v = abs.(fft(f2[1:32768,:],1)) / 32768
         fig = plot(((2:16384)-1)/32768*fs, 20log10.(f2v[2:16384,:].+eps()), xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: DUT loudspeakers to ref. mic(s)")
-        #png(fig, "dutrefmic")
+        png(fig, "dutrefmic")
         display(fig)
-        
+        mv("dutrefmic.png", joinpath(datpath, "dutrefmic.png"), remove_destination=true)
         # h2v = abs.(fft(h2,1)) / size(h2,1)
         # display(plot( 20log10.(h2v[1:div(size(h2v,1),2),:].+eps()) ))
 
@@ -320,9 +326,9 @@ function auto(config)
             # display(plot(f3[1:65536,:]))
             f3v = abs.(fft(f3[1:32768,:],1)) / 32768
             fig = plot(((2:16384)-1)/32768*fsd, 20log10.(f3v[2:16384,:].+eps()), xscale = :log10, xscale = :log10, xlabel="Hz", ylabel="dB", title="Impulse response: mouth(s) to DUT mic(s)")
-            #png(fig, "mouth$(p)dutrawmic")
+            png(fig, "mouth$(p)dutrawmic")
             display(fig)
-            
+            mv("mouth$(p)dutrawmic.png", joinpath(datpath,"mouth$(p)dutrawmic.png"), remove_destination=true)
             # h3v = abs.(fft(h3,1)) / size(h3,1)
             # display(plot( 20log10.(h3v[1:div(size(h3v,1),2),:].+eps()) ))
 
@@ -333,29 +339,18 @@ function auto(config)
         end
         info(logt("[info] 6", "art. mouth to dut raw mics transfer function checked"))
     end
-
-
-
-    #
-    # make unique measurement folder, after all sanity checks ok
-    datpath = replace(string(timezero), [':','.'], '-')
-    mkdir(datpath)
-
     matwrite(joinpath(datpath,"impulse_responses.mat"), tf)
-    for p in p_mouth
-        mv("mouth$(p)eq.png", joinpath(datpath,"mouth$(p)eq.png"), remove_destination=true)
-        #mv("mouth$(p)dutrawmic.png", joinpath(datpath,"mouth$(p)dutrawmic.png"), remove_destination=true)
-    end
-    for p in p_ldspk
-        mv("ldspk$(p)eq.png", joinpath(datpath,"ldspk$(p)eq.png"), remove_destination=true)
-    end
-    #mv("dutrefmic.png", joinpath(datpath, "dutrefmic.png"), remove_destination=true)
+
+    
+
 
     score_future = Array{Future,1}(length(cf["Task"]))
     cache_speech_cal = Dict{Any,Float64}()
     cache_noise_cal = Dict{Any,Float64}()
     cache_echo_cal = Dict{Any,Float64}()
     orient_mat = zeros(Float64, 4, 4)
+
+
 
 
     for (seq,i) in enumerate(cf["Task"])
@@ -376,10 +371,10 @@ function auto(config)
 
             # power cycle the dut
             Heartbeat.dutreset_client()
-            sleep(5)
+            delay(cf["Start Up Music/Speech Duration(sec)"])
             while !Device.luxisalive()
                 Heartbeat.dutreset_client()
-                sleep(5)
+                delay(cf["Start Up Music/Speech Duration(sec)"])
             end
             Device.luxinit()
             info(logt("[info] 7", "dut reboot and initialized"))
@@ -430,7 +425,8 @@ function auto(config)
 
                 speech_gain, dba_measure = levelcalibrate_dba(speech_eq[t0:t1, 1], 3, -6, sndmix_spk, sndmix_mic, fs, 
                                                               i["Mouth"]["Level(dBA)"], 
-                                                              joinpath(cf["Reference Mic"]["Level Calibration"], "$(i["Mouth"]["Measure Port"])"))
+                                                              joinpath(cf["Reference Mic"]["Level Calibration"], "$(i["Mouth"]["Measure Port"])"),
+                                                              update_interval_days = crd)
 
                 speech_eq .= 10^(speech_gain/20) .* speech_eq
                 cache_speech_cal[i["Mouth"]] = speech_gain
@@ -458,7 +454,8 @@ function auto(config)
 
                     noise_gain, dba_measure = levelcalibrate_dba(noise_eq[t0:t1, :], -6, sndmix_spk, sndmix_mic, fs, 
                                                                  i["Noise"]["Level(dBA)"], 
-                                                                 joinpath(cf["Reference Mic"]["Level Calibration"], "$(i["Noise"]["Measure Port"])"))
+                                                                 joinpath(cf["Reference Mic"]["Level Calibration"], "$(i["Noise"]["Measure Port"])"),
+                                                                 update_interval_days = crd)
 
                     noise_eq .= 10^(noise_gain/20) .* noise_eq
                     cache_noise_cal[i["Noise"]] = noise_gain
@@ -492,7 +489,9 @@ function auto(config)
                     sndmix_mic[i["Echo"]["Measure Port"], 1] = 1.0
                     echo_gain, dba_measure = levelcalibrate_dba(echo[t0:t1, :], -6, devmix_spk, sndmix_mic, fs, 
                                                                 i["Echo"]["Level(dBA)"], 
-                                                                joinpath(cf["Reference Mic"]["Level Calibration"], "$(i["Echo"]["Measure Port"])"), mode=:fileio)
+                                                                joinpath(cf["Reference Mic"]["Level Calibration"], "$(i["Echo"]["Measure Port"])"), 
+                                                                mode=:fileio,
+                                                                update_interval_days = crd)
 
                     echo .= 10^(echo_gain/20) .* echo
                     wavwrite(echo, "echocalibrated.wav", Fs=fs, nbits=32)
@@ -534,9 +533,9 @@ function auto(config)
                 status = Device.luxrecord(t_record, fetchall=cf["Internal Signals"])
             end
             dutalive = dutalive && status
-            info(logt("[info] 10", "main recording ready for go, dut status - $(status)"))
+            info(logt("[info] 10", "main recording ready for go, dut status - $(dutalive)"))
             
-            #
+            
             # bang!
             dat = SoundcardAPI.mixer(Float32.(sndplay), Float32.(sndmix_spk))
             pcmo = SharedArray{Float32,1}(SoundcardAPI.to_interleave(dat))
@@ -554,27 +553,33 @@ function auto(config)
                 end
                 fetch(sndone)
                 dutalive = dutalive && status
-                info(logt("[info] 10", "main recording finished, dut status - $(status)"))
-
-                finalout, rate = wavread("record.wav")
                 dutalive = dutalive && Device.luxisalive()
+                info(logt("[info] 10", "main recording finished, dut status - $(dutalive)"))
 
-                if dutalive && size(finalout,1) > floor(Int64, (t_record-3.0) * rate) 
-                    info(logt("[info] 10", "recording seems to be ok for file length"))
-                    refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
-                    mv("record.wav", joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), remove_destination=true)
-                    wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
-                    cf["Internal Signals"] && mv("./capture", joinpath(datpath, i["Topic"], "capture"))
-                    info(logt("[info] 10", "results written to /$(datpath)/$(i["Topic"])"))
-                    complete = true
-
-                elseif dutalive && size(finalout,1) < floor(Int64, (t_record-3.0) * rate)
-                    warn(logt("[warn] 1", "possibly parecord/paplay process not found, redo the main recording"))
-                    sleep(expback)
-                    expback = 2expback
-                    if expback >= 64
-                        complete = true
+                if dutalive 
+                    if isfile("record.wav")
+                        finalout, rate = wavread("record.wav")
+                        if size(finalout,1) > floor(Int64, (t_record-3.0) * rate)
+                            info(logt("[info] 10", "recording seems to be ok for file length"))
+                            refmic = Float64.(SoundcardAPI.mixer(Matrix{Float32}(transpose(reshape(pcmi, size(sndmix_mic,1), size(dat)[1]))), Float32.(sndmix_mic)))
+                            mv("record.wav", joinpath(datpath, i["Topic"], "record_$(i["Topic"]).wav"), remove_destination=true)
+                            wavwrite(refmic, joinpath(datpath, i["Topic"], "record_refmic.wav"), Fs=fs, nbits=32)
+                            cf["Internal Signals"] && mv("./capture", joinpath(datpath, i["Topic"], "capture"))
+                            info(logt("[info] 10", "results written to /$(datpath)/$(i["Topic"])"))
+                            complete = true
+                        else
+                            warn(logt("[warn] 1", "possibly parecord/paplay process not found, redo the main recording"))
+                            sleep(expback)
+                            expback = 2expback
+                            if expback >= 64
+                                complete = true
+                                dutalive = false
+                            end
+                        end
+                    else
+                        warn(logt("[warn] 4", "device seems alive, but no record.wav found, redo the task"))
                         dutalive = false
+                        complete = true
                     end
                 else    
                     warn(logt("[warn] 2", "device seems dead, redo the task"))

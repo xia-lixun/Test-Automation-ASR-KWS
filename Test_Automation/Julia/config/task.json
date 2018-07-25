@@ -1,6 +1,6 @@
 {
     "Project": "Samsung LUX",
-    "Version": "0.0.1-release+b1",
+    "Version": "0.1.1-release+b1",
     "Sample Rate": 48000,
     "Clock Drift Compensation": false,
     "Internal Signals": false,
@@ -8,9 +8,11 @@
     "Measure Room default SPL": true,
     "Noise Loudspeaker EQ check": true,
     "Artificial Mouth EQ check": true,
-    "Measure Impulse Response - DUT to Ref. Mic": true,
-    "Measure Impulse Response - Mouth to DUT Raw Mic": true,
+    "Measure Impulse Response - DUT to Ref. Mic": false,
+    "Measure Impulse Response - Mouth to DUT Raw Mic": false,
     "Score Server IP": "192.168.1.188",
+    "Start Up Music/Speech Duration(sec)": 15,
+    "Calibrator Refresh Day": 1,
 
     "Reference Mic": {
         "Port": [9],
@@ -29,7 +31,7 @@
 
 
     "Samsung Firmware Version": "0.0.0",
-    "Harman Solution Version": "9.9.999",
+    "Harman Solution Version": "9.9.9",
     "Capture Tuning Version": "0.0.1",
     "Speaker Tuning Version": "0.0.2",
 

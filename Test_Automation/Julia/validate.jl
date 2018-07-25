@@ -312,7 +312,8 @@ function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_in
     t_context = 3.0,
     t_decay = 2.0,
     piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
-    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
+    update_interval_days = 1)
     
 
     # parallel environment
@@ -356,8 +357,8 @@ function levelcalibrate_dba(symbol::Vector{Float64}, repeat::Int, symbol_gain_in
     info("use latest calibration files:")
     info(fileloc_piston)
     info(fileloc_piezo)
-    assert(millidelta_piston <= Dates.Millisecond(Dates.Day(1)))
-    assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(1)))
+    assert(millidelta_piston <= Dates.Millisecond(Dates.Day(update_interval_days)))
+    assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(update_interval_days)))
 
     # do recording
     y = recording_with_gain(symbol_gain_init) 
@@ -395,7 +396,8 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     t_decay = 2.0,
     gain_sync = -12,
     piston = Dict(:calibrator=>"42AA", :db=>"114.0", :dba=>"105.4", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
-    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"))
+    piezo = Dict(:calibrator=>"42AB", :db=>"114.0", :dba=>"", :mic=>"26XX", :preamp=>"12AA", :gain=>"0dB", :soundcard=>"UFX"),
+    update_interval_days = 1)
     
 
     # parallel environment
@@ -432,8 +434,8 @@ function levelcalibrate_dba(source::Matrix{Float64}, source_gain_init, mixspk::M
     info("use latest calibration files:")
     info(fileloc_piston)
     info(fileloc_piezo)
-    assert(millidelta_piston <= Dates.Millisecond(Dates.Day(1)))
-    assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(1)))
+    assert(millidelta_piston <= Dates.Millisecond(Dates.Day(update_interval_days)))
+    assert(millidelta_piezo <= Dates.Millisecond(Dates.Day(update_interval_days)))
 
     # do recording
     ya = recording_with_gain(source_gain_init) 
